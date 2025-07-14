@@ -1,2 +1,2 @@
-# studious-giggle-public
+# marvels-public
 public repo for test
