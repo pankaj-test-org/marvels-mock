@@ -22,6 +22,34 @@ jobs:
         echo "sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
         echo "Re-run requested for commit: $COMMIT_SHA"
 
+    - name: Create GitHub Check Run for Re-run
+      id: create_check
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        COMMIT_SHA="${{ steps.get_sha.outputs.sha }}"
+
+        echo "Creating check run for re-run on commit: $COMMIT_SHA"
+
+        RESPONSE=$(curl -s -X POST \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ github.repository }}/check-runs" \
+          -d "{
+            \"name\": \"Jenkins CI\",
+            \"head_sha\": \"$COMMIT_SHA\",
+            \"status\": \"in_progress\",
+            \"started_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+            \"output\": {
+              \"title\": \"Jenkins Build (Re-run)\",
+              \"summary\": \"Jenkins build re-triggered by @${{ github.actor }}\"
+            }
+          }")
+
+        CHECK_RUN_ID=$(echo "$RESPONSE" | jq -r '.id')
+        echo "check_run_id=$CHECK_RUN_ID" >> $GITHUB_OUTPUT
+        echo "✅ Check run created with ID: $CHECK_RUN_ID"
+
     - name: Trigger Jenkins
       env:
         JENKINS_WEBHOOK_URL: ${{ secrets.JENKINS_WEBHOOK_URL }}
@@ -32,7 +60,38 @@ jobs:
 
         curl -X POST \
           -H "Content-Type: application/json" \
-          -d "{\"repository\": \"${{ github.repository }}\", \"sha\": \"$COMMIT_SHA\"}" \
+          -d "{
+            \"repository\": \"${{ github.repository }}\",
+            \"sha\": \"$COMMIT_SHA\",
+            \"triggered_by\": \"${{ github.actor }}\",
+            \"trigger_cause\": \"Re-run by @${{ github.actor }}\",
+            \"event\": \"check_run.rerequested\"
+          }" \
           "$JENKINS_WEBHOOK_URL"
 
         echo "✅ Jenkins re-run triggered successfully!"
+
+    - name: Wait and Update Check Run
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "⏳ Waiting for Jenkins build to complete..."
+        sleep 120  # Wait 2 minutes
+
+        CHECK_RUN_ID="${{ steps.create_check.outputs.check_run_id }}"
+
+        curl -X PATCH \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ github.repository }}/check-runs/$CHECK_RUN_ID" \
+          -d "{
+            \"status\": \"completed\",
+            \"conclusion\": \"success\",
+            \"completed_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+            \"output\": {
+              \"title\": \"Jenkins Build Succeeded (Re-run)\",
+              \"summary\": \"Re-run by @${{ github.actor }} completed successfully\"
+            }
+          }"
+
+        echo "✅ Jenkins re-run completed!"

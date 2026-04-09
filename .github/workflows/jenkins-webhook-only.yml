@@ -58,10 +58,20 @@ jobs:
       run: |
         COMMIT_SHA="${{ steps.create_check.outputs.commit_sha }}"
 
+        # Determine trigger cause
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          TRIGGER_CAUSE="GitHub PR #${{ github.event.pull_request.number }} by @${{ github.actor }}"
+        else
+          TRIGGER_CAUSE="GitHub push by @${{ github.actor }}"
+        fi
+
         PAYLOAD=$(cat <<EOF
         {
           "repository": "${{ github.repository }}",
-          "sha": "$COMMIT_SHA"
+          "sha": "$COMMIT_SHA",
+          "triggered_by": "${{ github.actor }}",
+          "trigger_cause": "$TRIGGER_CAUSE",
+          "event": "${{ github.event_name }}"
         }
         EOF
         )

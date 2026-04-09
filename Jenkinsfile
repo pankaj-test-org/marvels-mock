@@ -13,13 +13,23 @@ pipeline {
     parameters {
         string(name: 'repository', defaultValue: '', description: 'GitHub repository (owner/repo)')
         string(name: 'sha', defaultValue: '', description: 'Commit SHA')
+        string(name: 'triggered_by', defaultValue: 'unknown', description: 'GitHub user who triggered the build')
+        string(name: 'trigger_cause', defaultValue: 'Generic Cause', description: 'Build trigger description')
+        string(name: 'event', defaultValue: 'webhook', description: 'GitHub event type')
     }
 
     stages {
         stage('Environment Info') {
             steps {
                 script {
+                    // Set build description to show who triggered it
+                    currentBuild.description = "${params.trigger_cause}"
+                    currentBuild.displayName = "#${env.BUILD_NUMBER} - ${params.triggered_by}"
+
                     echo "=== Build Information ==="
+                    echo "Triggered by: ${params.triggered_by}"
+                    echo "Trigger cause: ${params.trigger_cause}"
+                    echo "Event: ${params.event}"
                     echo "Repository: ${params.repository}"
                     echo "Commit SHA: ${params.sha}"
                     echo "Jenkins Build: ${env.BUILD_NUMBER}"
