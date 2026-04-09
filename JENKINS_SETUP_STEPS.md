@@ -167,14 +167,10 @@ Still in the same job configuration:
 Your Jenkins webhook URL is:
 
 ```
-https://<YOUR-JENKINS-URL>/generic-webhook-trigger/invoke?token=marvels-mock-trigger-token
+https://cm.pankajy-dev.me/generic-webhook-trigger/invoke?token=marvels-mock-trigger-token
 ```
 
-**Example:**
-- If Jenkins is at `https://jenkins.example.com`
-- Then webhook URL is: `https://jenkins.example.com/generic-webhook-trigger/invoke?token=marvels-mock-trigger-token`
-
-**Copy this URL - you'll need it for GitHub!**
+**Copy this exact URL - you'll need it for GitHub in Step 9!**
 
 ---
 
@@ -227,10 +223,8 @@ curl -X POST \
     "commit_message": "test",
     "run_id": "123"
   }' \
-  "https://<YOUR-JENKINS-URL>/generic-webhook-trigger/invoke?token=marvels-mock-trigger-token"
+  "https://cm.pankajy-dev.me/generic-webhook-trigger/invoke?token=marvels-mock-trigger-token"
 ```
-
-Replace `<YOUR-JENKINS-URL>` with your actual Jenkins URL.
 
 You should see a new build triggered in Jenkins!
 
