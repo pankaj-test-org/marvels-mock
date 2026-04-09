@@ -19,23 +19,26 @@ pipeline {
         stage('Set GitHub Status - Pending') {
             steps {
                 script {
-                    // Report pending status to GitHub
-                    // Requires GitHub Plugin and credentials configured in Jenkins
+                    // Report pending status to GitHub using API
                     if (params.sha && params.repository) {
                         try {
-                            githubNotify(
-                                account: params.repository.split('/')[0],
-                                repo: params.repository.split('/')[1],
-                                sha: params.sha,
-                                status: 'PENDING',
-                                description: 'Jenkins build in progress',
-                                context: 'continuous-integration/jenkins',
-                                credentialsId: 'github-status-token'
-                            )
+                            withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
+                                sh """
+                                    curl -f -X POST \
+                                      -H "Authorization: token \${GITHUB_TOKEN}" \
+                                      -H "Accept: application/vnd.github.v3+json" \
+                                      "https://api.github.com/repos/${params.repository}/statuses/${params.sha}" \
+                                      -d '{
+                                        "state": "pending",
+                                        "description": "Jenkins build in progress",
+                                        "context": "continuous-integration/jenkins",
+                                        "target_url": "${env.BUILD_URL}"
+                                      }'
+                                """
+                            }
                             echo "✅ GitHub status updated to PENDING"
                         } catch (Exception e) {
                             echo "⚠️ Could not update GitHub status: ${e.message}"
-                            echo "Make sure GitHub Plugin is installed (see JENKINS_SETUP_STEPS.md Step 1)"
                         }
                     }
                 }
@@ -112,18 +115,23 @@ pipeline {
             script {
                 echo "✅ Build succeeded!"
 
-                // Report success to GitHub
+                // Report success to GitHub using API
                 if (params.sha && params.repository) {
                     try {
-                        githubNotify(
-                            account: params.repository.split('/')[0],
-                            repo: params.repository.split('/')[1],
-                            sha: params.sha,
-                            status: 'SUCCESS',
-                            description: 'Jenkins build passed',
-                            context: 'continuous-integration/jenkins',
-                            credentialsId: 'github-status-token'
-                        )
+                        withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
+                            sh """
+                                curl -f -X POST \
+                                  -H "Authorization: token \${GITHUB_TOKEN}" \
+                                  -H "Accept: application/vnd.github.v3+json" \
+                                  "https://api.github.com/repos/${params.repository}/statuses/${params.sha}" \
+                                  -d '{
+                                    "state": "success",
+                                    "description": "Jenkins build passed",
+                                    "context": "continuous-integration/jenkins",
+                                    "target_url": "${env.BUILD_URL}"
+                                  }'
+                            """
+                        }
                         echo "✅ GitHub status updated to SUCCESS"
                     } catch (Exception e) {
                         echo "⚠️ Could not update GitHub status: ${e.message}"
@@ -136,18 +144,23 @@ pipeline {
             script {
                 echo "❌ Build failed!"
 
-                // Report failure to GitHub
+                // Report failure to GitHub using API
                 if (params.sha && params.repository) {
                     try {
-                        githubNotify(
-                            account: params.repository.split('/')[0],
-                            repo: params.repository.split('/')[1],
-                            sha: params.sha,
-                            status: 'FAILURE',
-                            description: 'Jenkins build failed',
-                            context: 'continuous-integration/jenkins',
-                            credentialsId: 'github-status-token'
-                        )
+                        withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
+                            sh """
+                                curl -f -X POST \
+                                  -H "Authorization: token \${GITHUB_TOKEN}" \
+                                  -H "Accept: application/vnd.github.v3+json" \
+                                  "https://api.github.com/repos/${params.repository}/statuses/${params.sha}" \
+                                  -d '{
+                                    "state": "failure",
+                                    "description": "Jenkins build failed",
+                                    "context": "continuous-integration/jenkins",
+                                    "target_url": "${env.BUILD_URL}"
+                                  }'
+                            """
+                        }
                         echo "✅ GitHub status updated to FAILURE"
                     } catch (Exception e) {
                         echo "⚠️ Could not update GitHub status: ${e.message}"
@@ -160,18 +173,23 @@ pipeline {
             script {
                 echo "⚠️ Build aborted!"
 
-                // Report error to GitHub
+                // Report error to GitHub using API
                 if (params.sha && params.repository) {
                     try {
-                        githubNotify(
-                            account: params.repository.split('/')[0],
-                            repo: params.repository.split('/')[1],
-                            sha: params.sha,
-                            status: 'ERROR',
-                            description: 'Jenkins build aborted',
-                            context: 'continuous-integration/jenkins',
-                            credentialsId: 'github-status-token'
-                        )
+                        withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
+                            sh """
+                                curl -f -X POST \
+                                  -H "Authorization: token \${GITHUB_TOKEN}" \
+                                  -H "Accept: application/vnd.github.v3+json" \
+                                  "https://api.github.com/repos/${params.repository}/statuses/${params.sha}" \
+                                  -d '{
+                                    "state": "error",
+                                    "description": "Jenkins build aborted",
+                                    "context": "continuous-integration/jenkins",
+                                    "target_url": "${env.BUILD_URL}"
+                                  }'
+                            """
+                        }
                         echo "✅ GitHub status updated to ERROR"
                     } catch (Exception e) {
                         echo "⚠️ Could not update GitHub status: ${e.message}"
