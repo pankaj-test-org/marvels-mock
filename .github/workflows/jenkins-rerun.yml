@@ -1,0 +1,38 @@
+name: Handle Jenkins Re-run
+
+on:
+  check_suite:
+    types: [rerequested]
+  check_run:
+    types: [rerequested]
+
+jobs:
+  rerun-jenkins:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Get commit SHA
+      id: get_sha
+      run: |
+        if [ "${{ github.event_name }}" = "check_suite" ]; then
+          COMMIT_SHA="${{ github.event.check_suite.head_sha }}"
+        else
+          COMMIT_SHA="${{ github.event.check_run.head_sha }}"
+        fi
+        echo "sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+        echo "Re-run requested for commit: $COMMIT_SHA"
+
+    - name: Trigger Jenkins
+      env:
+        JENKINS_WEBHOOK_URL: ${{ secrets.JENKINS_WEBHOOK_URL }}
+      run: |
+        COMMIT_SHA="${{ steps.get_sha.outputs.sha }}"
+
+        echo "🔄 Re-triggering Jenkins for commit: $COMMIT_SHA"
+
+        curl -X POST \
+          -H "Content-Type: application/json" \
+          -d "{\"repository\": \"${{ github.repository }}\", \"sha\": \"$COMMIT_SHA\"}" \
+          "$JENKINS_WEBHOOK_URL"
+
+        echo "✅ Jenkins re-run triggered successfully!"

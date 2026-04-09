@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mvn test)"
+      "Bash(mvn test)",
+      "Bash(curl -X POST -H 'Content-Type: application/json' -d '{\"repository\": \"pankaj-test-org/marvels-mock\", \"sha\": \"__CMDSUB_OUTPUT__\"}' 'https://cm.pankajy-dev.me/generic-webhook-trigger/invoke?token=marvels-mock-trigger-token')"
     ],
     "deny": [],
     "ask": []

@@ -77,28 +77,33 @@ jobs:
           sleep 10
           ELAPSED=$((ELAPSED + 10))
 
-          # Query GitHub API for commit statuses using jq for proper JSON parsing
-          JENKINS_STATE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          # Query GitHub API for check runs (not statuses) using jq
+          CHECK_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$REPO/commits/$COMMIT_SHA/status" | \
-            jq -r '.statuses[] | select(.context | test("jenkins|continuous-integration"; "i")) | .state' | head -1)
+            "https://api.github.com/repos/$REPO/commits/$COMMIT_SHA/check-runs")
 
-          if [ ! -z "$JENKINS_STATE" ] && [ "$JENKINS_STATE" != "null" ]; then
-            echo "Jenkins status: $JENKINS_STATE (${ELAPSED}s elapsed)"
+          # Look for Jenkins CI check run
+          JENKINS_STATUS=$(echo "$CHECK_RESPONSE" | jq -r '.check_runs[] | select(.name == "Jenkins CI") | .status' | head -1)
+          JENKINS_CONCLUSION=$(echo "$CHECK_RESPONSE" | jq -r '.check_runs[] | select(.name == "Jenkins CI") | .conclusion' | head -1)
 
-            if [ "$JENKINS_STATE" = "success" ]; then
-              echo "✅ Jenkins build succeeded!"
-              echo "### ✅ Jenkins Build Successful" >> $GITHUB_STEP_SUMMARY
-              exit 0
-            elif [ "$JENKINS_STATE" = "failure" ] || [ "$JENKINS_STATE" = "error" ]; then
-              echo "❌ Jenkins build failed!"
-              echo "### ❌ Jenkins Build Failed" >> $GITHUB_STEP_SUMMARY
-              exit 1
-            elif [ "$JENKINS_STATE" = "pending" ]; then
-              echo "⏳ Jenkins build in progress... (${ELAPSED}s)"
+          if [ ! -z "$JENKINS_STATUS" ] && [ "$JENKINS_STATUS" != "null" ]; then
+            if [ "$JENKINS_STATUS" = "completed" ]; then
+              echo "Jenkins check completed with conclusion: $JENKINS_CONCLUSION (${ELAPSED}s elapsed)"
+
+              if [ "$JENKINS_CONCLUSION" = "success" ]; then
+                echo "✅ Jenkins build succeeded!"
+                echo "### ✅ Jenkins Build Successful" >> $GITHUB_STEP_SUMMARY
+                exit 0
+              else
+                echo "❌ Jenkins build failed with conclusion: $JENKINS_CONCLUSION"
+                echo "### ❌ Jenkins Build Failed" >> $GITHUB_STEP_SUMMARY
+                exit 1
+              fi
+            else
+              echo "⏳ Jenkins check status: $JENKINS_STATUS (${ELAPSED}s)"
             fi
           else
-            echo "⏳ Waiting for Jenkins to start reporting... (${ELAPSED}s)"
+            echo "⏳ Waiting for Jenkins check to appear... (${ELAPSED}s)"
           fi
         done
 

@@ -19,26 +19,35 @@ pipeline {
         stage('Set GitHub Status - Pending') {
             steps {
                 script {
-                    // Report pending status to GitHub using API
+                    // Report pending status to GitHub using Checks API (supports re-run button)
                     if (params.sha && params.repository) {
                         try {
                             withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
+                                // Create a check run using Checks API
                                 sh """
                                     curl -f -X POST \
                                       -H "Authorization: token \${GITHUB_TOKEN}" \
                                       -H "Accept: application/vnd.github.v3+json" \
-                                      "https://api.github.com/repos/${params.repository}/statuses/${params.sha}" \
+                                      "https://api.github.com/repos/${params.repository}/check-runs" \
                                       -d '{
-                                        "state": "pending",
-                                        "description": "Jenkins build in progress",
-                                        "context": "continuous-integration/jenkins",
-                                        "target_url": "${env.BUILD_URL}"
-                                      }'
+                                        "name": "Jenkins CI",
+                                        "head_sha": "${params.sha}",
+                                        "status": "in_progress",
+                                        "started_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+                                        "details_url": "${env.BUILD_URL}",
+                                        "output": {
+                                          "title": "Jenkins Build",
+                                          "summary": "Jenkins build in progress..."
+                                        }
+                                      }' > /tmp/check_run_response.json
+
+                                    # Store the check run ID for later updates
+                                    cat /tmp/check_run_response.json | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2 > /tmp/check_run_id.txt
                                 """
                             }
-                            echo "✅ GitHub status updated to PENDING"
+                            echo "✅ GitHub check run created"
                         } catch (Exception e) {
-                            echo "⚠️ Could not update GitHub status: ${e.message}"
+                            echo "⚠️ Could not create GitHub check run: ${e.message}"
                         }
                     }
                 }
@@ -98,26 +107,38 @@ pipeline {
             script {
                 echo "✅ Build succeeded!"
 
-                // Report success to GitHub using API
+                // Complete the check run with success
                 if (params.sha && params.repository) {
                     try {
                         withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
                             sh """
-                                curl -f -X POST \
+                                # Get all check runs for this commit and find our Jenkins CI check
+                                CHECK_RUN_ID=\$(curl -s \
                                   -H "Authorization: token \${GITHUB_TOKEN}" \
                                   -H "Accept: application/vnd.github.v3+json" \
-                                  "https://api.github.com/repos/${params.repository}/statuses/${params.sha}" \
-                                  -d '{
-                                    "state": "success",
-                                    "description": "Jenkins build passed",
-                                    "context": "continuous-integration/jenkins",
-                                    "target_url": "${env.BUILD_URL}"
-                                  }'
+                                  "https://api.github.com/repos/${params.repository}/commits/${params.sha}/check-runs" | \
+                                  grep -A 5 '"name":"Jenkins CI"' | grep '"id":' | head -1 | grep -o '[0-9]*')
+
+                                if [ ! -z "\$CHECK_RUN_ID" ]; then
+                                  curl -f -X PATCH \
+                                    -H "Authorization: token \${GITHUB_TOKEN}" \
+                                    -H "Accept: application/vnd.github.v3+json" \
+                                    "https://api.github.com/repos/${params.repository}/check-runs/\$CHECK_RUN_ID" \
+                                    -d '{
+                                      "status": "completed",
+                                      "conclusion": "success",
+                                      "completed_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+                                      "output": {
+                                        "title": "Jenkins Build Succeeded",
+                                        "summary": "All stages completed successfully"
+                                      }
+                                    }'
+                                fi
                             """
                         }
-                        echo "✅ GitHub status updated to SUCCESS"
+                        echo "✅ GitHub check run completed with SUCCESS"
                     } catch (Exception e) {
-                        echo "⚠️ Could not update GitHub status: ${e.message}"
+                        echo "⚠️ Could not update GitHub check run: ${e.message}"
                     }
                 }
             }
@@ -127,26 +148,37 @@ pipeline {
             script {
                 echo "❌ Build failed!"
 
-                // Report failure to GitHub using API
+                // Complete the check run with failure
                 if (params.sha && params.repository) {
                     try {
                         withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
                             sh """
-                                curl -f -X POST \
+                                CHECK_RUN_ID=\$(curl -s \
                                   -H "Authorization: token \${GITHUB_TOKEN}" \
                                   -H "Accept: application/vnd.github.v3+json" \
-                                  "https://api.github.com/repos/${params.repository}/statuses/${params.sha}" \
-                                  -d '{
-                                    "state": "failure",
-                                    "description": "Jenkins build failed",
-                                    "context": "continuous-integration/jenkins",
-                                    "target_url": "${env.BUILD_URL}"
-                                  }'
+                                  "https://api.github.com/repos/${params.repository}/commits/${params.sha}/check-runs" | \
+                                  grep -A 5 '"name":"Jenkins CI"' | grep '"id":' | head -1 | grep -o '[0-9]*')
+
+                                if [ ! -z "\$CHECK_RUN_ID" ]; then
+                                  curl -f -X PATCH \
+                                    -H "Authorization: token \${GITHUB_TOKEN}" \
+                                    -H "Accept: application/vnd.github.v3+json" \
+                                    "https://api.github.com/repos/${params.repository}/check-runs/\$CHECK_RUN_ID" \
+                                    -d '{
+                                      "status": "completed",
+                                      "conclusion": "failure",
+                                      "completed_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+                                      "output": {
+                                        "title": "Jenkins Build Failed",
+                                        "summary": "One or more stages failed"
+                                      }
+                                    }'
+                                fi
                             """
                         }
-                        echo "✅ GitHub status updated to FAILURE"
+                        echo "✅ GitHub check run completed with FAILURE"
                     } catch (Exception e) {
-                        echo "⚠️ Could not update GitHub status: ${e.message}"
+                        echo "⚠️ Could not update GitHub check run: ${e.message}"
                     }
                 }
             }
@@ -156,26 +188,37 @@ pipeline {
             script {
                 echo "⚠️ Build aborted!"
 
-                // Report error to GitHub using API
+                // Complete the check run with cancelled
                 if (params.sha && params.repository) {
                     try {
                         withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
                             sh """
-                                curl -f -X POST \
+                                CHECK_RUN_ID=\$(curl -s \
                                   -H "Authorization: token \${GITHUB_TOKEN}" \
                                   -H "Accept: application/vnd.github.v3+json" \
-                                  "https://api.github.com/repos/${params.repository}/statuses/${params.sha}" \
-                                  -d '{
-                                    "state": "error",
-                                    "description": "Jenkins build aborted",
-                                    "context": "continuous-integration/jenkins",
-                                    "target_url": "${env.BUILD_URL}"
-                                  }'
+                                  "https://api.github.com/repos/${params.repository}/commits/${params.sha}/check-runs" | \
+                                  grep -A 5 '"name":"Jenkins CI"' | grep '"id":' | head -1 | grep -o '[0-9]*')
+
+                                if [ ! -z "\$CHECK_RUN_ID" ]; then
+                                  curl -f -X PATCH \
+                                    -H "Authorization: token \${GITHUB_TOKEN}" \
+                                    -H "Accept: application/vnd.github.v3+json" \
+                                    "https://api.github.com/repos/${params.repository}/check-runs/\$CHECK_RUN_ID" \
+                                    -d '{
+                                      "status": "completed",
+                                      "conclusion": "cancelled",
+                                      "completed_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+                                      "output": {
+                                        "title": "Jenkins Build Cancelled",
+                                        "summary": "Build was aborted"
+                                      }
+                                    }'
+                                fi
                             """
                         }
-                        echo "✅ GitHub status updated to ERROR"
+                        echo "✅ GitHub check run completed with CANCELLED"
                     } catch (Exception e) {
-                        echo "⚠️ Could not update GitHub status: ${e.message}"
+                        echo "⚠️ Could not update GitHub check run: ${e.message}"
                     }
                 }
             }
