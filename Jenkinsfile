@@ -16,32 +16,6 @@ pipeline {
     }
 
     stages {
-        stage('Set GitHub Status - Pending') {
-            steps {
-                script {
-                    // Report pending status to GitHub using Checks API (supports re-run button)
-                    if (params.sha && params.repository) {
-                        try {
-                            withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
-                                // Create a check run using Checks API
-                                def startedAt = new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone('UTC'))
-                                sh """
-                                    curl -f -X POST \
-                                      -H "Authorization: token \${GITHUB_TOKEN}" \
-                                      -H "Accept: application/vnd.github.v3+json" \
-                                      "https://api.github.com/repos/${params.repository}/check-runs" \
-                                      -d '{"name":"Jenkins CI","head_sha":"${params.sha}","status":"in_progress","started_at":"${startedAt}","details_url":"${env.BUILD_URL}","output":{"title":"Jenkins Build","summary":"Jenkins build in progress..."}}'
-                                """
-                            }
-                            echo "✅ GitHub check run created"
-                        } catch (Exception e) {
-                            echo "⚠️ Could not create GitHub check run: ${e.message}"
-                        }
-                    }
-                }
-            }
-        }
-
         stage('Environment Info') {
             steps {
                 script {
@@ -91,106 +65,6 @@ pipeline {
     }
 
     post {
-        success {
-            script {
-                echo "✅ Build succeeded!"
-
-                // Complete the check run with success
-                if (params.sha && params.repository) {
-                    try {
-                        withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
-                            def completedAt = new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone('UTC'))
-                            sh """
-                                # Get all check runs for this commit and find our Jenkins CI check
-                                CHECK_RUN_ID=\$(curl -s \
-                                  -H "Authorization: token \${GITHUB_TOKEN}" \
-                                  -H "Accept: application/vnd.github.v3+json" \
-                                  "https://api.github.com/repos/${params.repository}/commits/${params.sha}/check-runs" | \
-                                  grep -A 5 '"name":"Jenkins CI"' | grep '"id":' | head -1 | grep -o '[0-9]*')
-
-                                if [ ! -z "\$CHECK_RUN_ID" ]; then
-                                  curl -f -X PATCH \
-                                    -H "Authorization: token \${GITHUB_TOKEN}" \
-                                    -H "Accept: application/vnd.github.v3+json" \
-                                    "https://api.github.com/repos/${params.repository}/check-runs/\$CHECK_RUN_ID" \
-                                    -d '{"status":"completed","conclusion":"success","completed_at":"${completedAt}","output":{"title":"Jenkins Build Succeeded","summary":"All stages completed successfully"}}'
-                                fi
-                            """
-                        }
-                        echo "✅ GitHub check run completed with SUCCESS"
-                    } catch (Exception e) {
-                        echo "⚠️ Could not update GitHub check run: ${e.message}"
-                    }
-                }
-            }
-        }
-
-        failure {
-            script {
-                echo "❌ Build failed!"
-
-                // Complete the check run with failure
-                if (params.sha && params.repository) {
-                    try {
-                        withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
-                            def completedAt = new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone('UTC'))
-                            sh """
-                                CHECK_RUN_ID=\$(curl -s \
-                                  -H "Authorization: token \${GITHUB_TOKEN}" \
-                                  -H "Accept: application/vnd.github.v3+json" \
-                                  "https://api.github.com/repos/${params.repository}/commits/${params.sha}/check-runs" | \
-                                  grep -A 5 '"name":"Jenkins CI"' | grep '"id":' | head -1 | grep -o '[0-9]*')
-
-                                if [ ! -z "\$CHECK_RUN_ID" ]; then
-                                  curl -f -X PATCH \
-                                    -H "Authorization: token \${GITHUB_TOKEN}" \
-                                    -H "Accept: application/vnd.github.v3+json" \
-                                    "https://api.github.com/repos/${params.repository}/check-runs/\$CHECK_RUN_ID" \
-                                    -d '{"status":"completed","conclusion":"failure","completed_at":"${completedAt}","output":{"title":"Jenkins Build Failed","summary":"One or more stages failed"}}'
-                                fi
-                            """
-                        }
-                        echo "✅ GitHub check run completed with FAILURE"
-                    } catch (Exception e) {
-                        echo "⚠️ Could not update GitHub check run: ${e.message}"
-                    }
-                }
-            }
-        }
-
-        aborted {
-            script {
-                echo "⚠️ Build aborted!"
-
-                // Complete the check run with cancelled
-                if (params.sha && params.repository) {
-                    try {
-                        withCredentials([string(credentialsId: 'github-status-token', variable: 'GITHUB_TOKEN')]) {
-                            def completedAt = new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone('UTC'))
-                            sh """
-                                CHECK_RUN_ID=\$(curl -s \
-                                  -H "Authorization: token \${GITHUB_TOKEN}" \
-                                  -H "Accept: application/vnd.github.v3+json" \
-                                  "https://api.github.com/repos/${params.repository}/commits/${params.sha}/check-runs" | \
-                                  grep -A 5 '"name":"Jenkins CI"' | grep '"id":' | head -1 | grep -o '[0-9]*')
-
-                                if [ ! -z "\$CHECK_RUN_ID" ]; then
-                                  curl -f -X PATCH \
-                                    -H "Authorization: token \${GITHUB_TOKEN}" \
-                                    -H "Accept: application/vnd.github.v3+json" \
-                                    "https://api.github.com/repos/${params.repository}/check-runs/\$CHECK_RUN_ID" \
-                                    -d '{"status":"completed","conclusion":"cancelled","completed_at":"${completedAt}","output":{"title":"Jenkins Build Cancelled","summary":"Build was aborted"}}'
-                                fi
-                            """
-                        }
-                        echo "✅ GitHub check run completed with CANCELLED"
-                    } catch (Exception e) {
-                        echo "⚠️ Could not update GitHub check run: ${e.message}"
-                    }
-                }
-            }
-        }
-
         always {
             echo "Build finished: ${currentBuild.result}"
         }
