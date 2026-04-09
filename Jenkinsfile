@@ -26,11 +26,15 @@ pipeline {
                 script {
                     // Report pending status to GitHub
                     // Requires GitHub credentials configured in Jenkins
-                    if (params.sha) {
+                    if (params.sha && params.repository) {
                         githubNotify(
+                            account: params.repository.split('/')[0],
+                            repo: params.repository.split('/')[1],
+                            sha: params.sha,
                             status: 'PENDING',
                             description: 'Jenkins build in progress',
-                            context: 'continuous-integration/jenkins'
+                            context: 'continuous-integration/jenkins',
+                            credentialsId: 'github-status-token'
                         )
                     }
                 }
@@ -112,11 +116,15 @@ pipeline {
                 echo "✅ Build succeeded!"
 
                 // Report success to GitHub
-                if (params.sha) {
+                if (params.sha && params.repository) {
                     githubNotify(
+                        account: params.repository.split('/')[0],
+                        repo: params.repository.split('/')[1],
+                        sha: params.sha,
                         status: 'SUCCESS',
                         description: 'Jenkins build passed',
-                        context: 'continuous-integration/jenkins'
+                        context: 'continuous-integration/jenkins',
+                        credentialsId: 'github-status-token'
                     )
                 }
             }
@@ -127,11 +135,15 @@ pipeline {
                 echo "❌ Build failed!"
 
                 // Report failure to GitHub
-                if (params.sha) {
+                if (params.sha && params.repository) {
                     githubNotify(
+                        account: params.repository.split('/')[0],
+                        repo: params.repository.split('/')[1],
+                        sha: params.sha,
                         status: 'FAILURE',
                         description: 'Jenkins build failed',
-                        context: 'continuous-integration/jenkins'
+                        context: 'continuous-integration/jenkins',
+                        credentialsId: 'github-status-token'
                     )
                 }
             }
@@ -142,11 +154,15 @@ pipeline {
                 echo "⚠️ Build aborted!"
 
                 // Report error to GitHub
-                if (params.sha) {
+                if (params.sha && params.repository) {
                     githubNotify(
+                        account: params.repository.split('/')[0],
+                        repo: params.repository.split('/')[1],
+                        sha: params.sha,
                         status: 'ERROR',
                         description: 'Jenkins build aborted',
-                        context: 'continuous-integration/jenkins'
+                        context: 'continuous-integration/jenkins',
+                        credentialsId: 'github-status-token'
                     )
                 }
             }
