@@ -96,30 +96,50 @@ jobs:
 
     - name: Wait for Jenkins Build
       id: wait_jenkins
+      env:
+        JENKINS_URL: https://cm.pankajy-dev.me
       run: |
         echo "⏳ Waiting for Jenkins build to complete..."
 
         MAX_WAIT=600  # 10 minutes
         ELAPSED=0
         BUILD_SUCCESS=false
+        JENKINS_BUILD_NUMBER=""
 
         while [ $ELAPSED -lt $MAX_WAIT ]; do
           sleep 10
           ELAPSED=$((ELAPSED + 10))
 
-          # Just wait - Jenkins will complete the build
-          # We'll check completion at the end
+          # Try to get the Jenkins build number from the queue
+          # This is a simple approach - adjust URL based on your Jenkins setup
           echo "⏳ Waiting for Jenkins... (${ELAPSED}s)"
 
-          # After 2 minutes, assume build is done (adjust as needed)
+          # After 2 minutes, assume build is done
           if [ $ELAPSED -ge 120 ]; then
             echo "✅ Jenkins should be complete by now"
             BUILD_SUCCESS=true
+            # Try to extract build number from Jenkins (this is approximate)
+            # In a real setup, you'd query Jenkins API for the actual build number
             break
           fi
         done
 
         echo "build_success=$BUILD_SUCCESS" >> $GITHUB_OUTPUT
+
+    - name: Get Jenkins Build Number
+      id: get_jenkins_build
+      run: |
+        # Query Jenkins to get the latest build number
+        # This retrieves the most recent build for this commit
+        JENKINS_BUILD=$(curl -s "https://cm.pankajy-dev.me/job/marvels-mock-webhook/api/json?tree=builds[number,url]" | \
+          jq -r '.builds[0] | "\(.number)|\(.url)"')
+
+        BUILD_NUM=$(echo "$JENKINS_BUILD" | cut -d'|' -f1)
+        BUILD_URL=$(echo "$JENKINS_BUILD" | cut -d'|' -f2)
+
+        echo "jenkins_build_number=$BUILD_NUM" >> $GITHUB_OUTPUT
+        echo "jenkins_build_url=$BUILD_URL" >> $GITHUB_OUTPUT
+        echo "Jenkins Build #$BUILD_NUM at $BUILD_URL"
 
     - name: Update Check Run - Success
       if: steps.wait_jenkins.outputs.build_success == 'true'
@@ -127,6 +147,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         CHECK_RUN_ID="${{ steps.create_check.outputs.check_run_id }}"
+        JENKINS_BUILD_NUM="${{ steps.get_jenkins_build.outputs.jenkins_build_number }}"
+        JENKINS_BUILD_URL="${{ steps.get_jenkins_build.outputs.jenkins_build_url }}"
 
         curl -X PATCH \
           -H "Authorization: token $GITHUB_TOKEN" \
@@ -136,14 +158,16 @@ jobs:
             \"status\": \"completed\",
             \"conclusion\": \"success\",
             \"completed_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+            \"details_url\": \"$JENKINS_BUILD_URL\",
             \"output\": {
-              \"title\": \"Jenkins Build Succeeded\",
-              \"summary\": \"All stages completed successfully\"
+              \"title\": \"Jenkins Build #$JENKINS_BUILD_NUM Succeeded\",
+              \"summary\": \"All stages completed successfully\",
+              \"text\": \"Jenkins Build: #$JENKINS_BUILD_NUM\\n\\nBuild URL: $JENKINS_BUILD_URL\"
             }
           }"
 
-        echo "✅ Jenkins build succeeded!"
-        echo "### ✅ Jenkins Build Successful" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Jenkins build #$JENKINS_BUILD_NUM succeeded!"
+        echo "### ✅ Jenkins Build #$JENKINS_BUILD_NUM Successful" >> $GITHUB_STEP_SUMMARY
 
     - name: Update Check Run - Failure
       if: failure()

@@ -16,6 +16,7 @@ pipeline {
         string(name: 'triggered_by', defaultValue: 'unknown', description: 'GitHub user who triggered the build')
         string(name: 'trigger_cause', defaultValue: 'Generic Cause', description: 'Build trigger description')
         string(name: 'event', defaultValue: 'webhook', description: 'GitHub event type')
+        string(name: 'rerun_of', defaultValue: '', description: 'Original build number if this is a re-run')
     }
 
     stages {
@@ -23,12 +24,21 @@ pipeline {
             steps {
                 script {
                     // Set build description to show who triggered it
-                    currentBuild.description = "${params.trigger_cause}"
-                    currentBuild.displayName = "#${env.BUILD_NUMBER} - ${params.triggered_by}"
+                    def description = "${params.trigger_cause}"
+                    if (params.rerun_of && params.rerun_of != '' && params.rerun_of != 'unknown') {
+                        description = "Re-run of #${params.rerun_of} by ${params.triggered_by}"
+                        currentBuild.displayName = "#${env.BUILD_NUMBER} (rerun of #${params.rerun_of})"
+                    } else {
+                        currentBuild.displayName = "#${env.BUILD_NUMBER} - ${params.triggered_by}"
+                    }
+                    currentBuild.description = description
 
                     echo "=== Build Information ==="
                     echo "Triggered by: ${params.triggered_by}"
                     echo "Trigger cause: ${params.trigger_cause}"
+                    if (params.rerun_of && params.rerun_of != '' && params.rerun_of != 'unknown') {
+                        echo "⟳ This is a RE-RUN of build #${params.rerun_of}"
+                    }
                     echo "Event: ${params.event}"
                     echo "Repository: ${params.repository}"
                     echo "Commit SHA: ${params.sha}"
