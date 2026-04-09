@@ -1,6 +1,8 @@
 # Jenkins Setup Steps for GitHub Integration
 
-Follow these steps in order on your Jenkins instance.
+Follow these steps **in exact order** on your Jenkins instance.
+
+> **⚠️ IMPORTANT:** Do not skip steps! Each step depends on the previous one. If you skip Step 1 (Install Plugins), the pipeline will fail with `"No such DSL method 'githubNotify' found"`.
 
 ---
 
@@ -102,34 +104,11 @@ Still in the job configuration page:
    - JSONPath
 
    **Parameter 2:**
-   - Variable: `ref`
-   - Expression: `$.ref`
-   - JSONPath
-
-   **Parameter 3:**
    - Variable: `sha`
    - Expression: `$.sha`
    - JSONPath
 
-   **Parameter 4:**
-   - Variable: `branch`
-   - Expression: `$.branch`
-   - JSONPath
-
-   **Parameter 5:**
-   - Variable: `author`
-   - Expression: `$.author`
-   - JSONPath
-
-   **Parameter 6:**
-   - Variable: `commit_message`
-   - Expression: `$.commit_message`
-   - JSONPath
-
-   **Parameter 7:**
-   - Variable: `run_id`
-   - Expression: `$.run_id`
-   - JSONPath
+   > **Note**: Only `repository` and `sha` are required for the pipeline to work (for GitHub status updates and checkout). Other parameters like `branch`, `author`, `commit_message`, `run_id` are optional and only used for logging.
 
 4. In the **"Token"** field (under "Generic Webhook Trigger"):
    - Enter: `marvels-mock-trigger-token`
@@ -216,12 +195,7 @@ curl -X POST \
   -H "Content-Type: application/json" \
   -d '{
     "repository": "pankaj-test-org/marvels-mock",
-    "ref": "refs/heads/main",
-    "sha": "test123",
-    "branch": "main",
-    "author": "test",
-    "commit_message": "test",
-    "run_id": "123"
+    "sha": "test123"
   }' \
   "https://cm.pankajy-dev.me/generic-webhook-trigger/invoke?token=marvels-mock-trigger-token"
 ```
@@ -244,12 +218,24 @@ You should see a new build triggered in Jenkins!
 
 ## Troubleshooting
 
-### Issue: "githubNotify step not found"
+### Issue: "No such DSL method 'githubNotify' found"
+
+This is the most common error! It means the GitHub Plugin is not installed.
 
 **Solution:**
-- Make sure GitHub Plugin is installed
-- Restart Jenkins after plugin installation
-- Verify GitHub Server is configured in Step 4
+1. Go to **Manage Jenkins** → **Plugins** → **Available Plugins**
+2. Search for **"GitHub Plugin"**
+3. Check the box and click **"Install"**
+4. **IMPORTANT:** Restart Jenkins after installation:
+   - Click **"Restart Jenkins when installation is complete and no jobs are running"**
+   - Or manually restart: `sudo systemctl restart jenkins` (Linux) or restart the Jenkins service
+5. After restart, go back to Step 4 and configure the GitHub Server
+6. Re-run your pipeline
+
+**Verification:**
+- After restart, go to your pipeline and click **"Pipeline Syntax"** (left sidebar)
+- In the "Sample Step" dropdown, search for "githubNotify"
+- If it appears, the plugin is installed correctly!
 
 ### Issue: "Credentials not found: github-status-token"
 

@@ -11,13 +11,8 @@ pipeline {
 
     // These parameters will be populated by Generic Webhook Trigger plugin
     parameters {
-        string(name: 'repository', defaultValue: '', description: 'GitHub repository')
-        string(name: 'ref', defaultValue: '', description: 'Git ref')
+        string(name: 'repository', defaultValue: '', description: 'GitHub repository (owner/repo)')
         string(name: 'sha', defaultValue: '', description: 'Commit SHA')
-        string(name: 'branch', defaultValue: 'main', description: 'Branch name')
-        string(name: 'author', defaultValue: '', description: 'Commit author')
-        string(name: 'commit_message', defaultValue: '', description: 'Commit message')
-        string(name: 'run_id', defaultValue: '', description: 'GitHub Actions run ID')
     }
 
     stages {
@@ -25,17 +20,23 @@ pipeline {
             steps {
                 script {
                     // Report pending status to GitHub
-                    // Requires GitHub credentials configured in Jenkins
+                    // Requires GitHub Plugin and credentials configured in Jenkins
                     if (params.sha && params.repository) {
-                        githubNotify(
-                            account: params.repository.split('/')[0],
-                            repo: params.repository.split('/')[1],
-                            sha: params.sha,
-                            status: 'PENDING',
-                            description: 'Jenkins build in progress',
-                            context: 'continuous-integration/jenkins',
-                            credentialsId: 'github-status-token'
-                        )
+                        try {
+                            githubNotify(
+                                account: params.repository.split('/')[0],
+                                repo: params.repository.split('/')[1],
+                                sha: params.sha,
+                                status: 'PENDING',
+                                description: 'Jenkins build in progress',
+                                context: 'continuous-integration/jenkins',
+                                credentialsId: 'github-status-token'
+                            )
+                            echo "✅ GitHub status updated to PENDING"
+                        } catch (Exception e) {
+                            echo "⚠️ Could not update GitHub status: ${e.message}"
+                            echo "Make sure GitHub Plugin is installed (see JENKINS_SETUP_STEPS.md Step 1)"
+                        }
                     }
                 }
             }
@@ -46,11 +47,7 @@ pipeline {
                 script {
                     echo "=== Build Information ==="
                     echo "Repository: ${params.repository}"
-                    echo "Branch: ${params.branch}"
-                    echo "Commit: ${params.sha}"
-                    echo "Author: ${params.author}"
-                    echo "Message: ${params.commit_message}"
-                    echo "GitHub Run ID: ${params.run_id}"
+                    echo "Commit SHA: ${params.sha}"
                     echo "Jenkins Build: ${env.BUILD_NUMBER}"
                 }
             }
@@ -117,15 +114,20 @@ pipeline {
 
                 // Report success to GitHub
                 if (params.sha && params.repository) {
-                    githubNotify(
-                        account: params.repository.split('/')[0],
-                        repo: params.repository.split('/')[1],
-                        sha: params.sha,
-                        status: 'SUCCESS',
-                        description: 'Jenkins build passed',
-                        context: 'continuous-integration/jenkins',
-                        credentialsId: 'github-status-token'
-                    )
+                    try {
+                        githubNotify(
+                            account: params.repository.split('/')[0],
+                            repo: params.repository.split('/')[1],
+                            sha: params.sha,
+                            status: 'SUCCESS',
+                            description: 'Jenkins build passed',
+                            context: 'continuous-integration/jenkins',
+                            credentialsId: 'github-status-token'
+                        )
+                        echo "✅ GitHub status updated to SUCCESS"
+                    } catch (Exception e) {
+                        echo "⚠️ Could not update GitHub status: ${e.message}"
+                    }
                 }
             }
         }
@@ -136,15 +138,20 @@ pipeline {
 
                 // Report failure to GitHub
                 if (params.sha && params.repository) {
-                    githubNotify(
-                        account: params.repository.split('/')[0],
-                        repo: params.repository.split('/')[1],
-                        sha: params.sha,
-                        status: 'FAILURE',
-                        description: 'Jenkins build failed',
-                        context: 'continuous-integration/jenkins',
-                        credentialsId: 'github-status-token'
-                    )
+                    try {
+                        githubNotify(
+                            account: params.repository.split('/')[0],
+                            repo: params.repository.split('/')[1],
+                            sha: params.sha,
+                            status: 'FAILURE',
+                            description: 'Jenkins build failed',
+                            context: 'continuous-integration/jenkins',
+                            credentialsId: 'github-status-token'
+                        )
+                        echo "✅ GitHub status updated to FAILURE"
+                    } catch (Exception e) {
+                        echo "⚠️ Could not update GitHub status: ${e.message}"
+                    }
                 }
             }
         }
@@ -155,15 +162,20 @@ pipeline {
 
                 // Report error to GitHub
                 if (params.sha && params.repository) {
-                    githubNotify(
-                        account: params.repository.split('/')[0],
-                        repo: params.repository.split('/')[1],
-                        sha: params.sha,
-                        status: 'ERROR',
-                        description: 'Jenkins build aborted',
-                        context: 'continuous-integration/jenkins',
-                        credentialsId: 'github-status-token'
-                    )
+                    try {
+                        githubNotify(
+                            account: params.repository.split('/')[0],
+                            repo: params.repository.split('/')[1],
+                            sha: params.sha,
+                            status: 'ERROR',
+                            description: 'Jenkins build aborted',
+                            context: 'continuous-integration/jenkins',
+                            credentialsId: 'github-status-token'
+                        )
+                        echo "✅ GitHub status updated to ERROR"
+                    } catch (Exception e) {
+                        echo "⚠️ Could not update GitHub status: ${e.message}"
+                    }
                 }
             }
         }
