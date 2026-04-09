@@ -1,0 +1,32 @@
+name: Test Rerun Feature
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-job:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Simple test that can be rerun
+      run: |
+        echo "Testing rerun feature"
+        echo "PR Number: ${{ github.event.pull_request.number }}"
+        echo "Run ID: ${{ github.run_id }}"
+        echo "Run Number: ${{ github.run_number }}"
+        echo "This job can be re-run from the GitHub Actions UI"
+
+    - name: Run basic checks
+      run: |
+        ls -la
+        echo "Checking test file exists..."
+        if [ -f "test-rerun.txt" ]; then
+          echo "✅ Test file found"
+          cat test-rerun.txt
+        else
+          echo "⚠️  Test file not found"
+        fi
