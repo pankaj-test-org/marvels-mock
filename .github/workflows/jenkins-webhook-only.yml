@@ -20,18 +20,17 @@ jobs:
         JENKINS_WEBHOOK_URL: ${{ secrets.JENKINS_WEBHOOK_URL }}
       run: |
         # Send webhook to Jenkins Generic Webhook Trigger
-        # No authentication required if webhook endpoint is open
+        # For PRs, use the actual branch HEAD SHA, not the merge commit
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
+        else
+          COMMIT_SHA="${{ github.sha }}"
+        fi
 
         PAYLOAD=$(cat <<EOF
         {
           "repository": "${{ github.repository }}",
-          "ref": "${{ github.ref }}",
-          "sha": "${{ github.sha }}",
-          "branch": "${{ github.ref_name }}",
-          "author": "${{ github.actor }}",
-          "commit_message": "${{ github.event.head_commit.message }}",
-          "run_id": "${{ github.run_id }}",
-          "run_number": "${{ github.run_number }}"
+          "sha": "$COMMIT_SHA"
         }
         EOF
         )
@@ -58,10 +57,17 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        COMMIT_SHA="${{ github.sha }}"
+        # For PRs, use the actual branch HEAD SHA, not the merge commit
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
+        else
+          COMMIT_SHA="${{ github.sha }}"
+        fi
+
         REPO="${{ github.repository }}"
 
         echo "⏳ Waiting for Jenkins to report status..."
+        echo "Event: ${{ github.event_name }}"
         echo "Commit: $COMMIT_SHA"
 
         MAX_WAIT=600  # 10 minutes
@@ -108,8 +114,14 @@ jobs:
     - name: Report Completion
       if: always()
       run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
+        else
+          COMMIT_SHA="${{ github.sha }}"
+        fi
+
         echo "### Jenkins Job Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: \`$COMMIT_SHA\`" >> $GITHUB_STEP_SUMMARY
         echo "- **Branch**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
         echo "- **Triggered By**: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
