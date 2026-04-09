@@ -23,23 +23,15 @@ pipeline {
         stage('Environment Info') {
             steps {
                 script {
-                    // Set build description and cause to show who triggered it
+                    // Set build description to show who triggered it
                     def description = "${params.trigger_cause}"
-                    def causeText = "${params.trigger_cause}"
-
                     if (params.rerun_of && params.rerun_of != '' && params.rerun_of != 'unknown') {
                         description = "Re-run of #${params.rerun_of} by ${params.triggered_by}"
-                        causeText = "Re-run of build #${params.rerun_of}"
                         currentBuild.displayName = "#${env.BUILD_NUMBER} (rerun of #${params.rerun_of})"
                     } else {
                         currentBuild.displayName = "#${env.BUILD_NUMBER} - ${params.triggered_by}"
                     }
                     currentBuild.description = description
-
-                    // Set custom build cause to replace "Generic Cause"
-                    def causes = currentBuild.rawBuild.getCauses()
-                    causes.clear()
-                    causes.add(new hudson.model.Cause.RemoteCause("GitHub", causeText))
 
                     echo "=== Build Information ==="
                     echo "Triggered by: ${params.triggered_by}"
