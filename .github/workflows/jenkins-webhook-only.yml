@@ -77,20 +77,13 @@ jobs:
           sleep 10
           ELAPSED=$((ELAPSED + 10))
 
-          # Query GitHub API for commit statuses
-          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          # Query GitHub API for commit statuses using jq for proper JSON parsing
+          JENKINS_STATE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$REPO/commits/$COMMIT_SHA/status")
+            "https://api.github.com/repos/$REPO/commits/$COMMIT_SHA/status" | \
+            jq -r '.statuses[] | select(.context | test("jenkins|continuous-integration"; "i")) | .state' | head -1)
 
-          # Get overall state
-          STATE=$(echo "$RESPONSE" | grep -o '"state":"[^"]*"' | head -1 | cut -d'"' -f4)
-
-          # Get Jenkins-specific status (adjust context name if needed)
-          STATUSES=$(echo "$RESPONSE" | grep -o '"context":"[^"]*".*"state":"[^"]*"' | grep -i "jenkins\|continuous-integration" || echo "")
-
-          if [ ! -z "$STATUSES" ]; then
-            JENKINS_STATE=$(echo "$STATUSES" | grep -o '"state":"[^"]*"' | head -1 | cut -d'"' -f4)
-
+          if [ ! -z "$JENKINS_STATE" ] && [ "$JENKINS_STATE" != "null" ]; then
             echo "Jenkins status: $JENKINS_STATE (${ELAPSED}s elapsed)"
 
             if [ "$JENKINS_STATE" = "success" ]; then
@@ -101,6 +94,8 @@ jobs:
               echo "❌ Jenkins build failed!"
               echo "### ❌ Jenkins Build Failed" >> $GITHUB_STEP_SUMMARY
               exit 1
+            elif [ "$JENKINS_STATE" = "pending" ]; then
+              echo "⏳ Jenkins build in progress... (${ELAPSED}s)"
             fi
           else
             echo "⏳ Waiting for Jenkins to start reporting... (${ELAPSED}s)"
