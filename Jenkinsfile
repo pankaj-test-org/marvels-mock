@@ -52,27 +52,10 @@ pipeline {
                     echo "Repository: ${params.repository}"
                     echo "Commit SHA: ${params.sha}"
                     echo "Jenkins Build: ${env.BUILD_NUMBER}"
-                }
-            }
-        }
+                    echo "Workspace: ${env.WORKSPACE}"
 
-        stage('Checkout') {
-            steps {
-                script {
-                    // Checkout specific commit
-                    if (params.repository && params.sha) {
-                        checkout([
-                            $class: 'GitSCM',
-                            branches: [[name: params.sha]],
-                            userRemoteConfigs: [[
-                                url: "https://github.com/${params.repository}.git",
-                                credentialsId: 'github-credentials'  // Configure this in Jenkins
-                            ]]
-                        ])
-                    } else {
-                        // Fallback to SCM polling
-                        checkout scm
-                    }
+                    // Show what commit was actually checked out
+                    sh 'git log -1 --oneline'
                 }
             }
         }
