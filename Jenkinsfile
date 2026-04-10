@@ -9,8 +9,8 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '30'))
     }
 
-    // These parameters will be populated by Generic Webhook Trigger plugin
     parameters {
+        booleanParam(name: 'FAIL_BUILD', defaultValue: false, description: 'Set to true to intentionally fail the build')
         string(name: 'repository', defaultValue: '', description: 'GitHub repository')
         string(name: 'ref', defaultValue: '', description: 'Git ref')
         string(name: 'sha', defaultValue: '', description: 'Commit SHA')
@@ -48,6 +48,12 @@ pipeline {
                     echo "Message: ${params.commit_message}"
                     echo "GitHub Run ID: ${params.run_id}"
                     echo "Jenkins Build: ${env.BUILD_NUMBER}"
+
+                    // Show build cause (will be ReRunCause for re-runs)
+                    def causes = currentBuild.getBuildCauses()
+                    causes.each { cause ->
+                        echo "Cause: ${cause}"
+                    }
                 }
             }
         }
@@ -90,8 +96,12 @@ pipeline {
                     def characters = ['Antman', 'Captain America', 'Iron Man']
                     writeFile file: 'marvel-characters.txt', text: characters.join('\n')
 
-                    // Intentional failure to test Re-run button
-                    error("Test failure to demonstrate Re-run functionality")
+                    // Optional failure for testing Re-run button
+                    if (params.FAIL_BUILD) {
+                        error("Build failed intentionally (FAIL_BUILD=true)")
+                    } else {
+                        echo "Tests passed"
+                    }
                 }
             }
         }
