@@ -97,13 +97,13 @@ pipeline {
                     writeFile file: 'marvel-characters.txt', text: characters.join('\n')
 
                     // Optional failure for testing Re-run button
-                    // Check if .jenkins-fail-build file exists
-                    def shouldFail = fileExists('.jenkins-fail-build')
+                    // Set JENKINS_FAIL_BUILD=true in job configuration to enable
+                    def shouldFail = env.JENKINS_FAIL_BUILD == 'true'
                     if (shouldFail) {
-                        echo "⚠️ Found .jenkins-fail-build file - failing intentionally"
-                        error("Build failed intentionally (remove .jenkins-fail-build to pass)")
+                        echo "⚠️ JENKINS_FAIL_BUILD=true - failing intentionally"
+                        error("Build failed intentionally (set JENKINS_FAIL_BUILD=false to pass)")
                     } else {
-                        echo "✅ Tests passed"
+                        echo "✅ Tests passed (JENKINS_FAIL_BUILD=${env.JENKINS_FAIL_BUILD ?: 'not set'})"
                     }
                 }
             }
