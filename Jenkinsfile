@@ -1,27 +1,25 @@
-// Jenkinsfile for Multibranch Pipeline with CloudBees SCM Reporting
-// CloudBees SCM Reporting plugin handles GitHub check runs and re-run functionality
+// Jenkinsfile for testing CloudBees GitHub Reporting ReRunCause
 
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(name: 'FAIL_BUILD', defaultValue: false, description: 'Set to true to intentionally fail the build')
+    }
+
     options {
-        // Keep builds for 30 days
         buildDiscarder(logRotator(numToKeepStr: '30'))
     }
 
     stages {
-        stage('Environment Info') {
+        stage('Build Info') {
             steps {
                 script {
                     echo "=== Build Information ==="
                     echo "Branch: ${env.BRANCH_NAME}"
-                    echo "Build Number: ${env.BUILD_NUMBER}"
-                    echo "Workspace: ${env.WORKSPACE}"
+                    echo "Build: #${env.BUILD_NUMBER}"
 
-                    // Show what commit was checked out
-                    sh 'git log -1 --oneline'
-
-                    // Show build cause (will be RerunCause for re-runs)
+                    // Show build cause - look for ReRunCause
                     def causes = currentBuild.getBuildCauses()
                     causes.each { cause ->
                         echo "Cause: ${cause}"
@@ -32,8 +30,8 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo "Building application..."
-                sh 'echo "Running build..."'
+                echo "Building..."
+                sh 'echo "Build stage completed"'
             }
         }
 
@@ -41,24 +39,19 @@ pipeline {
             steps {
                 echo "Running tests..."
                 script {
-                    def characters = ['Antman', 'Captain America', 'Iron Man']
-                    writeFile file: 'marvel-characters.txt', text: characters.join('\n')
-
-                    // Intentionally fail to test re-run functionality
-                    error("Simulated test failure to trigger re-run button in GitHub")
+                    if (params.FAIL_BUILD) {
+                        error("Build failed intentionally (FAIL_BUILD=true)")
+                    } else {
+                        echo "Tests passed"
+                    }
                 }
             }
         }
 
         stage('Package') {
             steps {
-                sh 'zip marvel-character.zip marvel-characters.txt'
-            }
-        }
-
-        stage('Archive') {
-            steps {
-                archiveArtifacts artifacts: 'marvel-character.zip', fingerprint: true
+                echo "Packaging..."
+                sh 'echo "Package stage completed"'
             }
         }
     }
