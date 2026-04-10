@@ -16,22 +16,8 @@ pipeline {
             steps {
                 script {
                     echo "=== Build Information ==="
-                    echo "Repository: ${params.repository}"
-                    echo "Branch: ${params.branch}"
-                    echo "Commit: ${params.sha}"
-                    echo "Author: ${params.author}"
-                    echo "Message: ${params.commit_message}"
-                    echo "GitHub Run ID: ${params.run_id}"
-                    echo "Jenkins Build: ${env.BUILD_NUMBER}"
-
-                    // Show build cause (will be ReRunCause for re-runs)
-                    def causes = currentBuild.getBuildCauses()
-                    causes.each { cause ->
-                        echo "Cause: ${cause}"
-                    }
-                }
-            }
-        }
+                    echo "Branch: ${env.BRANCH_NAME}"
+                    echo "Build: #${env.BUILD_NUMBER}"
 
                     // Show build cause - look for ReRunCause
                     def causes = currentBuild.getBuildCauses()
@@ -53,18 +39,10 @@ pipeline {
             steps {
                 echo "Running tests..."
                 script {
-                    echo "Running tests..."
-                    def characters = ['Antman', 'Captain America', 'Iron Man']
-                    writeFile file: 'marvel-characters.txt', text: characters.join('\n')
-
-                    // Optional failure for testing Re-run button
-                    // Set JENKINS_FAIL_BUILD=true in job configuration to enable
-                    def shouldFail = env.JENKINS_FAIL_BUILD == 'true'
-                    if (shouldFail) {
-                        echo "⚠️ JENKINS_FAIL_BUILD=true - failing intentionally"
-                        error("Build failed intentionally (set JENKINS_FAIL_BUILD=false to pass)")
+                    if (params.FAIL_BUILD) {
+                        error("Build failed intentionally (FAIL_BUILD=true)")
                     } else {
-                        echo "✅ Tests passed (JENKINS_FAIL_BUILD=${env.JENKINS_FAIL_BUILD ?: 'not set'})"
+                        echo "Tests passed"
                     }
                 }
             }
