@@ -43,6 +43,9 @@ pipeline {
                 script {
                     def characters = ['Antman', 'Captain America', 'Iron Man']
                     writeFile file: 'marvel-characters.txt', text: characters.join('\n')
+
+                    // Intentionally fail to test re-run functionality
+                    error("Simulated test failure to trigger re-run button in GitHub")
                 }
             }
         }
