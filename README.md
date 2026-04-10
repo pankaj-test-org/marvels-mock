@@ -2,25 +2,52 @@
 
 Test repository for CloudBees CI + GitHub integration with ReRunCause testing.
 
+## Purpose
+
+This repository validates that CloudBees GitHub Reporting plugin generates native `ReRunCause` when GitHub's Re-run button is clicked. Used to test the CBP-31531 fix in Platform.
+
 ## Testing Re-run Functionality
 
-Builds can be configured to fail intentionally using the `JENKINS_FAIL_BUILD` environment variable.
+### Configure Build Failures (Optional)
 
-### To enable test failures:
+The Jenkinsfile checks for the `JENKINS_FAIL_BUILD` environment variable to control test failures.
+
+**To enable intentional failures:**
 
 1. Go to Jenkins: `https://cm.pankajy-dev.me/job/cb-jenkins-test/configure`
-2. Scroll to **"Properties"** section
+2. Scroll down to find **"Pipeline"** or **"Environment"** section
 3. Add environment variable:
    - **Name:** `JENKINS_FAIL_BUILD`
    - **Value:** `true`
-4. Save configuration
-5. Next build will fail → Re-run button appears in GitHub
+4. Click **"Save"**
+5. Next build will fail in Test stage
+6. Re-run button appears in GitHub checks
+7. Click Re-run → generates `ReRunCause`
 
-### To disable test failures:
+**To disable failures (normal builds):**
 
 1. Go to Jenkins job configuration
-2. Set `JENKINS_FAIL_BUILD=false` or remove the variable
+2. Change `JENKINS_FAIL_BUILD` to `false` or delete the variable
 3. Save configuration
-4. Builds will pass normally
+4. Builds pass normally
 
-See `RERUN_SETUP.md` for complete ReRunCause setup documentation.
+### Environment Variable Details
+
+- **Variable:** `JENKINS_FAIL_BUILD`
+- **Location:** Jenkins job configuration → Environment section
+- **Values:**
+  - `true` = Build fails intentionally in Test stage
+  - `false` or unset = Build passes normally
+- **Scope:** Applies to all branches in the multibranch pipeline
+- **Purpose:** Test Re-run button functionality without modifying code
+
+### Verify ReRunCause
+
+After clicking Re-run in GitHub, check Jenkins console output:
+
+```
+Cause: [_class:com.cloudbees.jenkins.plugins.github_reporting.remote.AppsAndChecks$ReRunCause, 
+        shortDescription:GitHub Checks re-run of #X]
+```
+
+This confirms CloudBees GitHub Reporting generated the correct cause for CBP-31531 testing.
