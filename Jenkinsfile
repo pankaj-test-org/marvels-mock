@@ -9,8 +9,8 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '30'))
     }
 
+    // These parameters will be populated by Generic Webhook Trigger plugin
     parameters {
-        booleanParam(name: 'FAIL_BUILD', defaultValue: false, description: 'Set to true to intentionally fail the build')
         string(name: 'repository', defaultValue: '', description: 'GitHub repository')
         string(name: 'ref', defaultValue: '', description: 'Git ref')
         string(name: 'sha', defaultValue: '', description: 'Commit SHA')
@@ -97,10 +97,13 @@ pipeline {
                     writeFile file: 'marvel-characters.txt', text: characters.join('\n')
 
                     // Optional failure for testing Re-run button
-                    if (params.FAIL_BUILD) {
-                        error("Build failed intentionally (FAIL_BUILD=true)")
+                    // Check if .jenkins-fail-build file exists
+                    def shouldFail = fileExists('.jenkins-fail-build')
+                    if (shouldFail) {
+                        echo "⚠️ Found .jenkins-fail-build file - failing intentionally"
+                        error("Build failed intentionally (remove .jenkins-fail-build to pass)")
                     } else {
-                        echo "Tests passed"
+                        echo "✅ Tests passed"
                     }
                 }
             }
