@@ -89,6 +89,9 @@ pipeline {
                     echo "Running tests..."
                     def characters = ['Antman', 'Captain America', 'Iron Man']
                     writeFile file: 'marvel-characters.txt', text: characters.join('\n')
+
+                    // Intentional failure to test Re-run button
+                    error("Test failure to demonstrate Re-run functionality")
                 }
             }
         }
