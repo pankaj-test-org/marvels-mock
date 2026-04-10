@@ -1,6 +1,9 @@
 name: Test Rerun Feature
 
 on:
+  push:
+    branches:
+      - test-rerun-feature
   pull_request:
   workflow_dispatch:
 
@@ -30,3 +33,8 @@ jobs:
         else
           echo "⚠️  Test file not found"
         fi
+
+    - name: Intentional failure to test re-run
+      run: |
+        echo "This step will fail to test GitHub re-run button"
+        exit 1
