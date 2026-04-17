@@ -1,0 +1,20 @@
+name: Intentional Failure
+
+on:
+  push:
+    branches:
+      - test-pr-apr-10-26
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  fail-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Intentionally fail
+        run: |
+          echo "This workflow is designed to fail intentionally"
+          exit 1
