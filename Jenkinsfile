@@ -3,10 +3,6 @@
 pipeline {
     agent any
 
-    parameters {
-        booleanParam(name: 'FAIL_BUILD', defaultValue: false, description: 'Set to true to intentionally fail the build')
-    }
-
     options {
         buildDiscarder(logRotator(numToKeepStr: '30'))
     }
@@ -39,10 +35,12 @@ pipeline {
             steps {
                 echo "Running tests..."
                 script {
-                    if (params.FAIL_BUILD) {
-                        error("Build failed intentionally (FAIL_BUILD=true)")
+                    def shouldFail = env.JENKINS_FAIL_BUILD == 'true'
+                    if (shouldFail) {
+                        echo "⚠️ JENKINS_FAIL_BUILD=true - failing intentionally"
+                        error("Build failed intentionally (set JENKINS_FAIL_BUILD=false to pass)")
                     } else {
-                        echo "Tests passed"
+                        echo "✅ Tests passed (JENKINS_FAIL_BUILD=${env.JENKINS_FAIL_BUILD ?: 'not set'})"
                     }
                 }
             }
