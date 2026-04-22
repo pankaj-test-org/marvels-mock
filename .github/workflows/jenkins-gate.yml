@@ -1,0 +1,21 @@
+name: Jenkins Gate
+
+on:
+  push:
+    branches:
+      - test-pr-apr-10-26
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  jenkins-prereq:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Pre-Jenkins checks
+        run: |
+          echo "✅ Pre-Jenkins checks passed - Jenkins can run"
+          echo "This check is configured as required for Jenkins to proceed"
+          exit 0

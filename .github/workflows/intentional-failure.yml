@@ -1,4 +1,4 @@
-name: Intentional Failure
+name: Test Failure Check
 
 on:
   push:
@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  fail-job:
+  intentional-failure:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Intentionally fail
+      - name: Intentionally fail (not blocking Jenkins)
         run: |
-          echo "This workflow is designed to fail intentionally"
+          echo "This check fails intentionally but does NOT block Jenkins"
           exit 1
