@@ -10,7 +10,10 @@ This repository validates that CloudBees GitHub Reporting plugin generates nativ
 
 ### Configure Build Failures (Optional)
 
-The Jenkinsfile checks for the `JENKINS_FAIL_BUILD` environment variable to control test failures.
+Control failures using environment/repository variables:
+
+**Jenkins:** `JENKINS_FAIL_BUILD` environment variable  
+**GitHub Actions:** `GH_CHECK_FAIL` repository variable
 
 **To enable intentional failures:**
 
@@ -19,7 +22,7 @@ The Jenkinsfile checks for the `JENKINS_FAIL_BUILD` environment variable to cont
 3. Add environment variable:
    - **Name:** `JENKINS_FAIL_BUILD`
    - **Value:** `true`
-4. Click **"Save"**
+4. Click **"Save"*
 5. Next build will fail in Test stage
 6. Re-run button appears in GitHub checks
 7. Click Re-run → generates `ReRunCause`
@@ -31,15 +34,21 @@ The Jenkinsfile checks for the `JENKINS_FAIL_BUILD` environment variable to cont
 3. Save configuration
 4. Builds pass normally
 
-### Environment Variable Details
+### Configuration Variables
 
-- **Variable:** `JENKINS_FAIL_BUILD`
+#### Jenkins: `JENKINS_FAIL_BUILD`
 - **Location:** Jenkins job configuration → Environment section
 - **Values:**
   - `true` = Build fails intentionally in Test stage
   - `false` or unset = Build passes normally
 - **Scope:** Applies to all branches in the multibranch pipeline
-- **Purpose:** Test Re-run button functionality without modifying code
+
+#### GitHub Actions: `GH_CHECK_FAIL`
+- **Location:** GitHub repo → Settings → Secrets and variables → Actions → Variables
+- **Values:**
+  - `true` = GitHub check fails
+  - `false` or unset = GitHub check passes
+- **Purpose:** Control GitHub checks without modifying workflow code
 
 ### Verify ReRunCause
 

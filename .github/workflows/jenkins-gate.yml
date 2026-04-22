@@ -1,4 +1,4 @@
-name: Jenkins Gate
+name: CI Checks
 
 on:
   push:
@@ -6,16 +6,28 @@ on:
       - test-pr-apr-10-26
   pull_request:
   workflow_dispatch:
+  repository_dispatch:
+    types: [jenkins-rerun]
 
 jobs:
-  jenkins-prereq:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Pre-Jenkins checks
+      - name: Run checks
+        env:
+          GH_CHECK_FAIL: ${{ vars.GH_CHECK_FAIL || 'false' }}
         run: |
-          echo "✅ Pre-Jenkins checks passed - Jenkins can run"
-          echo "This check is configured as required for Jenkins to proceed"
-          exit 0
+          echo "GITHUB_CHECK_FAIL=${GITHUB_CHECK_FAIL}"
+
+          if [ "${GITHUB_CHECK_FAIL}" = "true" ]; then
+            echo "❌ GITHUB_CHECK_FAIL=true - failing intentionally"
+            echo "To pass: Set repository variable GITHUB_CHECK_FAIL=false"
+            exit 1
+          else
+            echo "✅ GitHub checks passed"
+            echo "GITHUB_CHECK_FAIL=${GITHUB_CHECK_FAIL}"
+            exit 0
+          fi
