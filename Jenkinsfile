@@ -17,17 +17,8 @@ pipeline {
 
                     // Show build cause - look for ReRunCause
                     def causes = currentBuild.getBuildCauses()
-                    def isRerun = false
                     causes.each { cause ->
                         echo "Cause: ${cause}"
-                        if (cause.toString().contains('ReRunCause') || cause.toString().contains('UserIdCause')) {
-                            isRerun = true
-                        }
-                    }
-
-                    if (isRerun) {
-                        echo "⚠️ RERUN DETECTED - Skipping GitHub checks requirement"
-                        env.SKIP_GITHUB_CHECKS = 'true'
                     }
                 }
             }
