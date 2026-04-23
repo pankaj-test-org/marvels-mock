@@ -13,6 +13,7 @@ jobs:
     if: github.repository != 'pankaj-test-org/marvels-mock'
     permissions:
       contents: write
+      workflows: write
     steps:
       - name: Checkout fork
         uses: actions/checkout@v6
