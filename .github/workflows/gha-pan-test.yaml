@@ -1,0 +1,74 @@
+name: register-artifact-from-github
+
+on:
+  push
+
+jobs:
+  register-artifact:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Build
+        run: |
+          echo "Building application..."
+          mvn -B clean compile
+
+      - name: Run Tests
+        run: |
+          echo "Running tests..."
+          mvn -B test
+
+      - name: Publish Test Results
+        if: always()
+        uses: cloudbees-io-gha/publish-test-results@v1
+        with:
+          cloudbees-url: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
+          test-results-pattern: '**/target/surefire-reports/*.xml'
+          test-results-format: 'junit'
+
+      - name: Publish Evidence
+        if: always()
+        uses: cloudbees-io-gha/publish-evidence-item@v1
+        with:
+          cloudbees-url: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
+          content: |
+            ## Build Evidence
+            - **Build Number**: ${{ github.run_number }}
+            - **Commit**: ${{ github.sha }}
+            - **Branch**: ${{ github.ref_name }}
+            - **Actor**: ${{ github.actor }}
+            - **Test Status**: ${{ job.status }}
+
+            ## Test Summary
+            Tests executed successfully and results published to CloudBees Platform.
+          format: "MARKDOWN"
+
+      - name: Register build artifact
+        id: register-build-artifact
+        uses: cloudbees-io-gha/register-build-artifact@v3
+        with:
+          cloudbees-url: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
+          name: gha-test-image
+          url: "docker.io/pankajydev/gha-test-image:1.0.0"
+          version: 1.0.0
+
+      - name: Print artifact id
+        run: |
+          echo '${{ steps.register-build-artifact.outputs.cbp_artifact_id }}'
+
+      - name: Register deployed artifact
+        uses: docker://public.ecr.aws/cloudbees/actions/gha-register-deployed-artifact:main-8d819ee6c37734d240bc3e399c7515d85aa14f76
+        id: register-deployed-artifact
+        env:
+          ARTIFACT_NAME: "gha-test-image"
+          ARTIFACT_ID: ${{ steps.register-build-artifact.outputs.cbp_artifact_id }}
+          CLOUDBEES_API_URL: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
+          ARTIFACT_TYPE: "docker"
+          TARGET_ENVIRONMENT: "pan101"
+          ARTIFACT_DIGEST: "b5efa05e8033481620ea88606b3da1992ec830d141588f97c5a8f98d72683b6b"
+          DEPLOYMENT_LABELS: "pan1"
