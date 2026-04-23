@@ -4,7 +4,6 @@ pipeline {
     environment {
         // Centralized environment variable configuration
         JENKINS_FAIL_BUILD = 'false'
-        ARTIFACT_ID = "artifact-${BUILD_NUMBER}-${BUILD_TIMESTAMP}"
     }
 
     stages {
@@ -19,39 +18,8 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            parallel {
-                stage('Compile') {
-                    steps {
-                        echo "Compiling..."
-                        echo "Compilation completed"
-                    }
-                }
-
-                stage('Package') {
-                    stages {
-                        stage('Package - Step 1') {
-                            steps {
-                                echo "Packaging - Step 1"
-                            }
-                        }
-                        stage('Package - Step 2') {
-                            steps {
-                                echo "Packaging - Step 2"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         stage('Parallel Build & Test') {
             parallel {
-                stage('Build Verification') {
-                    steps {
-                        echo "Build Verification"
-                    }
-                }
                 stage('Unit Tests') {
                     steps {
                         echo 'Running unit tests...'
@@ -87,12 +55,6 @@ pipeline {
                     echo "Artifact output is: ${artifactOutput}"
                     env.ARTIFACT_ID = artifactOutput
                 }
-            }
-        }
-
-        stage('Test') {
-            steps {
-                echo 'Running Unit Tests...'
             }
         }
 
