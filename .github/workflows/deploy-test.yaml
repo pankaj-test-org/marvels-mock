@@ -1,0 +1,38 @@
+name: register-artifact-from-github
+
+on:
+  push
+
+jobs:
+  register-artifact:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Build
+        run: |
+          sleep 10
+
+      - name: Register build artifact
+        id: register-build-artifact
+        uses: cloudbees-io-gha/register-build-artifact@v3
+        with:
+          name: gha-test-image
+          url: "docker.io/pankajydev/gha-test-image:1.0.0"
+          version: 1.0.0
+
+      - name: Print artifact id
+        run: |
+          echo '${{ steps.register-build-artifact.outputs.cbp_artifact_id }}'
+
+      - name: Register deployed artifact
+        uses: cloudbees-io-gha/register-deployed-artifact@v1
+        id: register-deployed-artifact
+        with:
+          target-environment: "preprod"
+          artifact-id: ${{ steps.register-build-artifact.outputs.cbp_artifact_id }}
+          labels: "preprod"
