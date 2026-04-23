@@ -4,7 +4,6 @@ pipeline {
     environment {
         // Centralized environment variable configuration
         JENKINS_FAIL_BUILD = 'false'
-        ARTIFACT_ID = ''
     }
 
     stages {
@@ -98,16 +97,14 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                script {
-                    echo "Artifact ID : ${env.ARTIFACT_ID}"
-                    registerDeployedArtifactMetadata(
-                        artifactId: "${env.ARTIFACT_ID}",
-                        artifactUrl: "docker.io/pankajydev/gha-test-image:1.0.0",
-                        targetEnvironment: "pan101",
-                        labels: "pan1"
-                    )
-                    echo 'Deploying...'
-                }
+                echo "Artifact ID : ${env.ARTIFACT_ID}"
+                registerDeployedArtifactMetadata(
+                    artifactId: "${env.ARTIFACT_ID}",
+                    artifactUrl: "docker.io/pankajydev/gha-test-image:1.0.0",
+                    targetEnvironment: "pan101",
+                    labels: "pan1"
+                )
+                echo 'Deploying...'
             }
         }
 
