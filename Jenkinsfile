@@ -100,8 +100,8 @@ pipeline {
             steps {
                 echo "Artifact ID : ${env.ARTIFACT_ID}"
                 registerDeployedArtifactMetadata(
-                    id: "${env.ARTIFACT_ID}",
-                    url: "docker.io/pankajydev/gha-test-image:1.0.0",
+                    artifactId: "${env.ARTIFACT_ID}",
+                    artifactUrl: "docker.io/pankajydev/gha-test-image:1.0.0",
                     targetEnvironment: "pan101",
                     labels: "pan1"
                 )
