@@ -1,7 +1,0 @@
-Test file for rerun feature
-============================
-
-This file is created to trigger CI/CD pipeline and test the rerun functionality.
-
-Timestamp: 2026-04-09
-Purpose: Testing GitHub Actions/Jenkins rerun capabilities
