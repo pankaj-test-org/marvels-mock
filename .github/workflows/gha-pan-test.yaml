@@ -34,7 +34,10 @@ jobs:
         uses: docker://public.ecr.aws/cloudbees/actions/gha-register-deployed-artifact:main-8d819ee6c37734d240bc3e399c7515d85aa14f76
         id: register-deployed-artifact
         env:
-          CLOUDBEES_API_URL: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
-          TARGET_ENVIRONMENT: "pan101"
+          ARTIFACT_NAME: "gha-test-image"
           ARTIFACT_ID: ${{ steps.register-build-artifact.outputs.cbp_artifact_id }}
+          CLOUDBEES_API_URL: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
+          ARTIFACT_TYPE: "docker"
+          TARGET_ENVIRONMENT: "pan101"
+          ARTIFACT_DIGEST: "b5efa05e8033481620ea88606b3da1992ec830d141588f97c5a8f98d72683b6b"
           DEPLOYMENT_LABELS: "pan1"
