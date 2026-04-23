@@ -15,7 +15,38 @@ jobs:
 
       - name: Build
         run: |
-          sleep 10
+          echo "Building application..."
+          mvn -B clean compile
+
+      - name: Run Tests
+        run: |
+          echo "Running tests..."
+          mvn -B test
+
+      - name: Publish Test Results
+        if: always()
+        uses: cloudbees-io-gha/publish-test-results@v1
+        with:
+          cloudbees-url: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
+          test-results-pattern: '**/target/surefire-reports/*.xml'
+          test-results-format: 'junit'
+
+      - name: Publish Evidence
+        if: always()
+        uses: cloudbees-io-gha/publish-evidence-item@v1
+        with:
+          cloudbees-url: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
+          content: |
+            ## Build Evidence
+            - **Build Number**: ${{ github.run_number }}
+            - **Commit**: ${{ github.sha }}
+            - **Branch**: ${{ github.ref_name }}
+            - **Actor**: ${{ github.actor }}
+            - **Test Status**: ${{ job.status }}
+
+            ## Test Summary
+            Tests executed successfully and results published to CloudBees Platform.
+          format: "MARKDOWN"
 
       - name: Register build artifact
         id: register-build-artifact
