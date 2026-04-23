@@ -44,6 +44,15 @@ pipeline {
                 script {
                     echo 'Registering the metadata'
                     echo 'Another echo to make the pipeline a bit more complex'
+                    echo "DEBUG: Branch: ${env.BRANCH_NAME}, Change ID: ${env.CHANGE_ID}, Change Branch: ${env.CHANGE_BRANCH}"
+
+                    // Log build causes
+                    def causes = currentBuild.getBuildCauses()
+                    echo "DEBUG: Build Causes:"
+                    causes.each { cause ->
+                        echo "  - ${cause}"
+                    }
+
                     def artifactOutput = registerBuildArtifactMetadata(
                         name: "gha-test-image",
                         version: "1.0.0",
