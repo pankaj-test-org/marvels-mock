@@ -13,7 +13,6 @@ jobs:
     if: github.repository != 'pankaj-test-org/marvels-mock'
     permissions:
       contents: write
-      workflows: write
     steps:
       - name: Checkout fork
         uses: actions/checkout@v6
@@ -33,7 +32,13 @@ jobs:
       - name: Sync main branch
         run: |
           git checkout main
+          # Check if there are workflow changes
           git merge upstream/main --no-edit || echo "Already up to date"
+
+          # Check if only workflow files changed
+          if git diff --name-only HEAD~1 HEAD | grep -q '^\.github/workflows/'; then
+            echo "⚠️ Workflow files were updated. These require manual sync or a PAT."
+          fi
 
       - name: Push changes
         run: |
