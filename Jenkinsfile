@@ -14,6 +14,10 @@ pipeline {
                     echo "JENKINS_FAIL_BUILD: ${env.JENKINS_FAIL_BUILD}"
                     def shouldFail = env.JENKINS_FAIL_BUILD == 'true'
                     echo "Build will ${shouldFail ? 'FAIL' : 'PASS'}"
+
+                    // Set image tag with build number
+                    env.IMAGE_TAG = "1.0.${env.BUILD_NUMBER}"
+                    echo "Image tag: ${env.IMAGE_TAG}"
                 }
             }
         }
@@ -39,6 +43,39 @@ pipeline {
             }
         }
 
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo "Building Docker image with tag: ${env.IMAGE_TAG}"
+                    sh "docker build -t pankajydev/jenkins-test-image:${env.IMAGE_TAG} ."
+
+                    // Get the image digest (SHA256 hash)
+                    def imageDigest = sh(script: "docker inspect --format='{{index .RepoDigests 0}}' pankajydev/jenkins-test-image:${env.IMAGE_TAG} || docker inspect --format='{{.Id}}' pankajydev/jenkins-test-image:${env.IMAGE_TAG} | cut -d: -f2", returnStdout: true).trim()
+                    env.IMAGE_DIGEST = imageDigest
+                    echo "Docker image built successfully"
+                    echo "Image digest: ${env.IMAGE_DIGEST}"
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    echo 'Pushing Docker image to Docker Hub...'
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
+                        sh "docker push pankajydev/jenkins-test-image:${env.IMAGE_TAG}"
+                    }
+
+                    // Get the digest after push (RepoDigests will be available)
+                    def pushedDigest = sh(script: "docker inspect --format='{{index .RepoDigests 0}}' pankajydev/jenkins-test-image:${env.IMAGE_TAG} | cut -d@ -f2", returnStdout: true).trim()
+                    env.IMAGE_DIGEST = pushedDigest
+                    echo "Docker image pushed successfully"
+                    echo "Pushed image digest: ${env.IMAGE_DIGEST}"
+                }
+            }
+        }
+
         stage('Registering build artifact') {
             steps {
                 script {
@@ -54,11 +91,11 @@ pipeline {
                     }
 
                     def artifactOutput = registerBuildArtifactMetadata(
-                        name: "gha-test-image",
-                        version: "1.0.0",
+                        name: "jenkins-test-image",
+                        version: "${env.IMAGE_TAG}",
                         type: "docker",
-                        url: "docker.io/pankajydev/gha-test-image:1.0.0",
-                        digest: "b5efa05e8033481620ea88606b3da1992ec830d141588f97c5a8f98d72683b6b",
+                        url: "docker.io/pankajydev/jenkins-test-image:${env.IMAGE_TAG}",
+                        digest: "${env.IMAGE_DIGEST}",
                         label: "pan1"
                     )
                     echo "Artifact output is: ${artifactOutput}"
@@ -72,7 +109,7 @@ pipeline {
                 echo "Artifact ID : ${env.ARTIFACT_ID}"
                 registerDeployedArtifactMetadata(
                     artifactId: "${env.ARTIFACT_ID}",
-                    artifactUrl: "docker.io/pankajydev/gha-test-image:1.0.0",
+                    artifactUrl: "docker.io/pankajydev/jenkins-test-image:${env.IMAGE_TAG}",
                     targetEnvironment: "pan101",
                     labels: "pan1"
                 )

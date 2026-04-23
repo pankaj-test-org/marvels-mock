@@ -13,9 +13,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Build
+      - name: Set image tag
+        id: set-tag
         run: |
-          sleep 1
+          echo "IMAGE_TAG=1.0.${{ github.run_number }}" >> $GITHUB_ENV
+          echo "Image tag: 1.0.${{ github.run_number }}"
+
+      - name: Build Docker Image
+        run: |
+          echo "Building Docker image with tag: ${{ env.IMAGE_TAG }}"
+          docker build -t pankajydev/gha-test-image:${{ env.IMAGE_TAG }} .
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push Docker Image
+        run: |
+          echo "Pushing Docker image..."
+          docker push pankajydev/gha-test-image:${{ env.IMAGE_TAG }}
+
+      - name: Get Image Digest
+        id: get-digest
+        run: |
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' pankajydev/gha-test-image:${{ env.IMAGE_TAG }} | cut -d@ -f2)
+          echo "IMAGE_DIGEST=${DIGEST}" >> $GITHUB_ENV
+          echo "Image digest: ${DIGEST}"
 
       - name: Register build artifact
         id: register-build-artifact
@@ -23,8 +48,9 @@ jobs:
         with:
           cloudbees-url: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
           name: gha-test-image
-          url: "docker.io/pankajydev/gha-test-image:1.0.0"
-          version: 1.0.0
+          url: "docker.io/pankajydev/gha-test-image:${{ env.IMAGE_TAG }}"
+          version: ${{ env.IMAGE_TAG }}
+          digest: ${{ env.IMAGE_DIGEST }}
 
       - name: Print artifact id
         run: |
@@ -39,5 +65,5 @@ jobs:
           CLOUDBEES_API_URL: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
           ARTIFACT_TYPE: "docker"
           TARGET_ENVIRONMENT: "pan101"
-          ARTIFACT_DIGEST: "b5efa05e8033481620ea88606b3da1992ec830d141588f97c5a8f98d72683b6b"
+          ARTIFACT_DIGEST: ${{ env.IMAGE_DIGEST }}
           DEPLOYMENT_LABELS: "pan1"
