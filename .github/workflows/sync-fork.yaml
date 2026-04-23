@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     # Only run on forks, not on the main repository
     if: github.repository != 'pankaj-test-org/marvels-mock'
+    permissions:
+      contents: write
     steps:
       - name: Checkout fork
         uses: actions/checkout@v6
