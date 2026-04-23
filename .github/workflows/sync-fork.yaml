@@ -1,0 +1,44 @@
+name: Sync Fork with Upstream
+
+on:
+  schedule:
+    # Runs daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # Only run on forks, not on the main repository
+    if: github.repository != 'pankaj-test-org/marvels-mock'
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/pankaj-test-org/marvels-mock.git || true
+          git fetch upstream
+
+      - name: Sync main branch
+        run: |
+          git checkout main
+          git merge upstream/main --no-edit || echo "Already up to date"
+
+      - name: Push changes
+        run: |
+          git push origin main
+
+      - name: Summary
+        run: |
+          echo "✅ Fork synced with upstream successfully"
+          echo "Upstream: pankaj-test-org/marvels-mock"
+          echo "Branch: main"
