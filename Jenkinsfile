@@ -4,7 +4,7 @@ pipeline {
     environment {
         // Centralized environment variable configuration
         JENKINS_FAIL_BUILD = 'false'
-        ARTIFACT_ID = "artifact-${BUILD_NUMBER}-${BUILD_TIMESTAMP}"
+        ARTIFACT_ID = ''
     }
 
     stages {
