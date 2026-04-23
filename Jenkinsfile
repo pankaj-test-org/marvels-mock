@@ -82,7 +82,7 @@ pipeline {
                         type: "docker",
                         url: "docker.io/pankajydev/gha-test-image:1.0.0",
                         digest: "b5efa05e8033481620ea88606b3da1992ec830d141588f97c5a8f98d72683b6b",
-                        label: "preprod"
+                        label: "pan-1"
                     )
                     echo "Artifact output is: ${artifactOutput}"
                     env.ARTIFACT_ID = artifactOutput
@@ -102,8 +102,8 @@ pipeline {
                 registerDeployedArtifactMetadata(
                     id: "${env.ARTIFACT_ID}",
                     url: "docker.io/pankajydev/gha-test-image:1.0.0",
-                    targetEnvironment: "preprod",
-                    labels: "preprod"
+                    targetEnvironment: "pan-101",
+                    labels: "pan-1"
                 )
                 echo 'Deploying...'
             }
