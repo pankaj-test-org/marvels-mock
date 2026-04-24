@@ -72,7 +72,7 @@ jobs:
           DEPLOYMENT_LABELS: "pan1"
 
       - name: Publish evidence
-        uses: cloudbees-io-gha/gha-publish-evidence-item@v1
+        uses: cloudbees-io-gha/publish-evidence-item@v1
         with:
           cloudbees-url: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-preprod.beescloud.com' }}
           content: |
