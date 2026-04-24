@@ -98,13 +98,18 @@ gh secret set DOCKER_PASSWORD --repo pankaj-test-org/marvels-mock
 Or via GitHub UI: `Settings → Secrets and variables → Actions → New repository secret`
 
 **Repository Variables:**
-- `CLOUDBEES_API_URL`: CloudBees Platform API URL (default: `https://api.saas-qa.beescloud.com`)
+- `CLOUDBEES_API_URL`: CloudBees Platform API URL
+  - QA: `https://api.saas-qa.beescloud.com` (default)
+  - Production: `https://api.cloudbees.io`
 - `GH_CHECK_FAIL`: Set to `true` to intentionally fail GitHub Actions checks (optional)
 
 **Add variables via GitHub CLI:**
 ```bash
-# Add CloudBees API URL
+# Add CloudBees API URL (QA environment)
 gh variable set CLOUDBEES_API_URL --repo pankaj-test-org/marvels-mock --body "https://api.saas-qa.beescloud.com"
+
+# For Production environment, use:
+# gh variable set CLOUDBEES_API_URL --repo pankaj-test-org/marvels-mock --body "https://api.cloudbees.io"
 
 # Add GH_CHECK_FAIL flag (optional)
 gh variable set GH_CHECK_FAIL --repo pankaj-test-org/marvels-mock --body "false"
