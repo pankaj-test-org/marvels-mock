@@ -5,12 +5,14 @@ on:
 
 jobs:
   register-artifact:
-    name: Docker Build & Artifact Registration
+#    name: Docker Build & Artifact Registration
     if: vars.SKIP_GHA != 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    env:
+      CLOUDBEES_URL: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-preprod.beescloud.com' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -20,6 +22,25 @@ jobs:
         run: |
           echo "IMAGE_TAG=1.0.${{ github.run_number }}" >> $GITHUB_ENV
           echo "Image tag: 1.0.${{ github.run_number }}"
+
+      - name: Run Maven Tests
+        run: |
+          echo "Running Maven tests..."
+          mvn -B clean test
+          echo "Tests completed"
+
+      - name: Publish JUnit Test Results
+        uses: cloudbees-io-gha/publish-test-results@v1
+        if: always()
+        env:
+          CLOUDBEES_API_TOKEN: ${{ secrets.CLOUDBEES_API_TOKEN }}
+          CLOUDBEES_API_URL: ${{ env.CLOUDBEES_URL }}
+          TEST_TYPE: 'JUNIT'
+          FOLDER_PATH: 'target/surefire-reports'
+        with:
+          cloudbees-url: ${{ env.CLOUDBEES_URL }}
+          test-type: 'JUNIT'
+          results-path: 'target/surefire-reports'
 
       - name: Build Docker Image
         run: |
@@ -48,11 +69,12 @@ jobs:
         id: register-build-artifact
         uses: cloudbees-io-gha/register-build-artifact@v3
         with:
-          cloudbees-url: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
+          cloudbees-url: ${{ env.CLOUDBEES_URL }}
           name: gha-test-image
           url: "docker.io/pankajydev/gha-test-image:${{ env.IMAGE_TAG }}"
           version: ${{ env.IMAGE_TAG }}
           digest: ${{ env.IMAGE_DIGEST }}
+          label: "pan1"
 
       - name: Print artifact id
         run: |
@@ -64,8 +86,29 @@ jobs:
         env:
           ARTIFACT_NAME: "gha-test-image"
           ARTIFACT_ID: ${{ steps.register-build-artifact.outputs.cbp_artifact_id }}
-          CLOUDBEES_API_URL: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-preprod.beescloud.com' }}
+          CLOUDBEES_API_URL: ${{ env.CLOUDBEES_URL }}
           ARTIFACT_TYPE: "docker"
           TARGET_ENVIRONMENT: "pan101"
           ARTIFACT_DIGEST: ${{ env.IMAGE_DIGEST }}
           DEPLOYMENT_LABELS: "pan1"
+
+      - name: Publish evidence
+        uses: cloudbees-io-gha/publish-evidence-item@v1
+        env:
+          CLOUDBEES_API_TOKEN: ${{ secrets.CLOUDBEES_API_TOKEN }}
+        with:
+          cloudbees-url: ${{ env.CLOUDBEES_URL }}
+          content: |
+            ## Build Evidence
+
+            - **Image:** `pankajydev/gha-test-image:${{ env.IMAGE_TAG }}`
+            - **Digest:** `${{ env.IMAGE_DIGEST }}`
+            - **Artifact ID:** `${{ steps.register-build-artifact.outputs.cbp_artifact_id }}`
+            - **Build Number:** `${{ github.run_number }}`
+            - **Commit:** `${{ github.sha }}`
+            - **Branch:** `${{ github.ref_name }}`
+
+            ### Deployment Details
+            - **Environment:** `pan101`
+            - **Labels:** `pan1`
+          format: "MARKDOWN"

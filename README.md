@@ -98,6 +98,7 @@ The repository also includes a GitHub Actions workflow (`.github/workflows/gha-p
 **Repository Secrets:**
 - `DOCKER_USERNAME`: Docker Hub username
 - `DOCKER_PASSWORD`: Docker Hub token/password
+- `CLOUDBEES_API_TOKEN`: CloudBees Platform API token (required for publishing evidence)
 
 **Add secrets via GitHub CLI:**
 ```bash
@@ -106,9 +107,18 @@ gh secret set DOCKER_USERNAME --repo pankaj-test-org/marvels-mock
 
 # Add Docker Hub password/token
 gh secret set DOCKER_PASSWORD --repo pankaj-test-org/marvels-mock
+
+# Add CloudBees Platform API token
+gh secret set CLOUDBEES_API_TOKEN --repo pankaj-test-org/marvels-mock
 ```
 
 Or via GitHub UI: `Settings → Secrets and variables → Actions → New repository secret`
+
+**How to get CloudBees Platform API Token:**
+1. Log in to CloudBees Platform (e.g., https://app.saas-preprod.beescloud.com)
+2. Go to User Settings → API Keys/Tokens
+3. Create a new token with appropriate permissions
+4. Copy the token and add it to GitHub secrets
 
 **Repository Variables:**
 - `CLOUDBEES_API_URL`: CloudBees Platform API URL
