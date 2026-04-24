@@ -1,30 +1,60 @@
 package com.example.marvelmock;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import java.util.Map;
-import java.util.List;
-import java.util.HashMap;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 
-@RestController
-public class MarvelMockController {
-    @GetMapping("/v1/public/characters")
-    public Map<String, Object> getCharacters(@RequestParam(value = "name", required = false) String name) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("status", "Ok");
-        response.put("data", Map.of(
-            "results", List.of(
-                Map.of(
-                    "id", 1011334,
-                    "name", name != null ? name : "3-D Man",
-                    "description", "A mock character from Marvel API",
-                    "modified", "2014-04-29T14:18:17-0400"
-                )
-            )
-        ));
-        return response;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
+public class MarvelMockController implements HttpHandler {
+
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            sendResponse(exchange, 405, "{\"error\":\"Method not allowed\"}");
+            return;
+        }
+
+        // Parse query parameters
+        String name = getQueryParam(exchange.getRequestURI(), "name");
+
+        // Build response
+        String characterName = name != null ? name : "3-D Man";
+        String jsonResponse = String.format(
+            "{\"code\":200,\"status\":\"Ok\",\"data\":{\"results\":[{\"id\":1011334,\"name\":\"%s\",\"description\":\"A mock character from Marvel API\",\"modified\":\"2014-04-29T14:18:17-0400\"}]}}",
+            characterName
+        );
+
+        sendResponse(exchange, 200, jsonResponse);
+    }
+
+    public String getQueryParam(URI uri, String paramName) {
+        String query = uri.getQuery();
+        if (query == null) {
+            return null;
+        }
+
+        Map<String, String> params = new HashMap<>();
+        for (String param : query.split("&")) {
+            String[] pair = param.split("=");
+            if (pair.length == 2 && !pair[1].isEmpty()) {
+                params.put(pair[0], pair[1]);
+            }
+        }
+        return params.get(paramName);
+    }
+
+    private void sendResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
+        exchange.getResponseHeaders().set("Content-Type", "application/json");
+        byte[] responseBytes = response.getBytes(StandardCharsets.UTF_8);
+        exchange.sendResponseHeaders(statusCode, responseBytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(responseBytes);
+        }
     }
 }
 
