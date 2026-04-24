@@ -63,7 +63,7 @@ jobs:
         env:
           ARTIFACT_NAME: "gha-test-image"
           ARTIFACT_ID: ${{ steps.register-build-artifact.outputs.cbp_artifact_id }}
-          CLOUDBEES_API_URL: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-qa.beescloud.com' }}
+          CLOUDBEES_API_URL: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-preprod.beescloud.com' }}
           ARTIFACT_TYPE: "docker"
           TARGET_ENVIRONMENT: "pan101"
           ARTIFACT_DIGEST: ${{ env.IMAGE_DIGEST }}

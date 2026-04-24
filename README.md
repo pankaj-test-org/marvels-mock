@@ -99,6 +99,7 @@ Or via GitHub UI: `Settings → Secrets and variables → Actions → New reposi
 
 **Repository Variables:**
 - `CLOUDBEES_API_URL`: CloudBees Platform API URL
+  - PREPROD: `https://api.saas-preprod.beescloud.com` (default)
   - QA: `https://api.saas-qa.beescloud.com` (default)
   - Production: `https://api.cloudbees.io`
 - `GH_CHECK_FAIL`: Set to `true` to intentionally fail GitHub Actions checks (optional)
@@ -106,10 +107,10 @@ Or via GitHub UI: `Settings → Secrets and variables → Actions → New reposi
 **Add variables via GitHub CLI:**
 ```bash
 # Add CloudBees API URL (QA environment)
-gh variable set CLOUDBEES_API_URL --repo pankaj-test-org/marvels-mock --body "https://api.saas-qa.beescloud.com"
+gh variable set CLOUDBEES_API_URL --repo pankaj-test-org/marvels-mock --body "https://api.saas-preprod.beescloud.com"
 
 # For Production environment, use:
-# gh variable set CLOUDBEES_API_URL --repo pankaj-test-org/marvels-mock --body "https://api.cloudbees.io"
+# gh variable set CLOUDBEES_API_URL --repo pankaj-test-org/marvels-mock-prod --body "https://api.cloudbees.io"
 
 # Add GH_CHECK_FAIL flag (optional)
 gh variable set GH_CHECK_FAIL --repo pankaj-test-org/marvels-mock --body "false"
