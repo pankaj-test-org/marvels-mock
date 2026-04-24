@@ -70,3 +70,22 @@ jobs:
           TARGET_ENVIRONMENT: "pan101"
           ARTIFACT_DIGEST: ${{ env.IMAGE_DIGEST }}
           DEPLOYMENT_LABELS: "pan1"
+
+      - name: Publish evidence
+        uses: cloudbees-io-gha/gha-publish-evidence-item@v1
+        with:
+          cloudbees-url: ${{ vars.CLOUDBEES_API_URL || 'https://api.saas-preprod.beescloud.com' }}
+          content: |
+            ## Build Evidence
+
+            - **Image:** `pankajydev/gha-test-image:${{ env.IMAGE_TAG }}`
+            - **Digest:** `${{ env.IMAGE_DIGEST }}`
+            - **Artifact ID:** `${{ steps.register-build-artifact.outputs.cbp_artifact_id }}`
+            - **Build Number:** `${{ github.run_number }}`
+            - **Commit:** `${{ github.sha }}`
+            - **Branch:** `${{ github.ref_name }}`
+
+            ### Deployment Details
+            - **Environment:** `pan101`
+            - **Labels:** `pan1`
+          format: "MARKDOWN"
