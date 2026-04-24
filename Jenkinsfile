@@ -1,10 +1,9 @@
 pipeline {
     agent any
 
-    environment {
-        // Centralized environment variable configuration
-        JENKINS_FAIL_BUILD = 'false'
-    }
+//    environment {
+//        // Centralized environment variable configuration
+//    }
 
     stages {
         stage('Initialize') {
