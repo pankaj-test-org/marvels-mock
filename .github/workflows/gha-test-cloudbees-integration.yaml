@@ -5,7 +5,7 @@ on:
 
 jobs:
   register-artifact:
-    name: Docker Build & Artifact Registration
+#    name: Docker Build & Artifact Registration
     if: vars.SKIP_GHA != 'true'
     runs-on: ubuntu-latest
     permissions:
