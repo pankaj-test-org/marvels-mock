@@ -2,6 +2,15 @@
 
 Test repository for CloudBees CI + GitHub integration with ReRunCause testing.
 
+## Table of Contents
+
+- [Purpose](#purpose)
+- [Jenkins Multibranch Pipeline Setup](#jenkins-multibranch-pipeline-setup)
+  - [Prerequisites](#prerequisites)
+  - [Pipeline Configuration](#pipeline-configuration)
+  - [GitHub Actions Configuration](#github-actions-configuration)
+- [Testing Re-run Functionality](#testing-re-run-functionality)
+
 ## Purpose
 
 This repository validates that CloudBees GitHub Reporting plugin generates native `ReRunCause` when GitHub's Re-run button is clicked. Used to test the CBP-31531 fix in Platform.
@@ -110,21 +119,34 @@ Or via GitHub UI: `Settings → Secrets and variables → Actions → New reposi
 - `GH_CHECK_FAIL`: Set to `true` to intentionally fail GitHub Actions checks (optional)
 
 **Add variables via GitHub CLI:**
+
+*Repository-level:*
 ```bash
-# Add CloudBees API URL (QA environment)
+# Add CloudBees API URL (PREPROD environment)
 gh variable set CLOUDBEES_API_URL --repo pankaj-test-org/marvels-mock --body "https://api.saas-preprod.beescloud.com"
 
 # For Production environment, use:
 # gh variable set CLOUDBEES_API_URL --repo pankaj-test-org/marvels-mock-prod --body "https://api.cloudbees.io"
 
-# Add GH_CHECK_FAIL flag (optional)
+# Add GH_CHECK_FAIL flag for intentional failing(optional)
 gh variable set GH_CHECK_FAIL --repo pankaj-test-org/marvels-mock --body "false"
 
 # Add SKIP_GHA flag (optional)
 gh variable set SKIP_GHA --repo pankaj-test-org/marvels-mock --body "false"
 ```
 
-Or via GitHub UI: `Settings → Secrets and variables → Actions → Variables → New repository variable`
+*Organization-level (visible to all repos):*
+```bash
+# Add variable at organization level (all repos)
+gh variable set CLOUDBEES_API_URL --org pankaj-test-org --body "https://api.saas-preprod.beescloud.com" --visibility all
+
+# Or for selected repositories only
+gh variable set CLOUDBEES_API_URL --org pankaj-test-org --body "https://api.saas-preprod.beescloud.com" --visibility selected --repos marvels-mock,marvels-mock-preprod
+```
+
+Or via GitHub UI: 
+- Repository: `Settings → Secrets and variables → Actions → Variables → New repository variable`
+- Organization: `Organization Settings → Secrets and variables → Actions → Variables → New organization variable`
 
 ## Testing Re-run Functionality
 
