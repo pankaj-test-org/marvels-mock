@@ -1,9 +1,9 @@
 pipeline {
     agent any
 
-    environment {
-        // Centralized environment variable configuration
-    }
+//    environment {
+//        // Centralized environment variable configuration
+//    }
 
     stages {
         stage('Initialize') {
