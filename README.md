@@ -119,6 +119,9 @@ gh variable set CLOUDBEES_API_URL --repo pankaj-test-org/marvels-mock --body "ht
 
 # Add GH_CHECK_FAIL flag (optional)
 gh variable set GH_CHECK_FAIL --repo pankaj-test-org/marvels-mock --body "false"
+
+# Add SKIP_GHA flag (optional)
+gh variable set SKIP_GHA --repo pankaj-test-org/marvels-mock --body "false"
 ```
 
 Or via GitHub UI: `Settings → Secrets and variables → Actions → Variables → New repository variable`
