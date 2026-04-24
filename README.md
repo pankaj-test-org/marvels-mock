@@ -24,8 +24,13 @@ This repository validates that CloudBees GitHub Reporting plugin generates nativ
    - **Credentials:** Select your GitHub App credentials
    - **Repository URL:** `https://github.com/pankaj-test-org/marvels-mock`
    - **Behaviors:**
-     - Discover branches: **Only `main` branch**
-     - Filter by name: `main` (regular expression)
+     - Discover branches: Strategy as needed
+     - Filter by name (with regular expression): `main|PR-.*`
+   
+   **⚠️ Important:** Use the regex pattern `main|PR-.*` to avoid duplicate builds. Without this filter, Jenkins will build both feature branches AND pull requests, causing redundant builds. This pattern ensures:
+   - `main` branch builds on push
+   - Pull requests build with `PR-` prefix (e.g., `PR-123`)
+   - Feature branches are ignored (only their PRs are built)
    
 3. **GitHub App Requirements**
    The GitHub App must have the following permissions and event subscriptions:
