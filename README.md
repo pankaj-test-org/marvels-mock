@@ -72,7 +72,11 @@ This repository validates that CloudBees GitHub Reporting plugin generates nativ
      --field 'events[]=check_suite'
    ```
 
-5. **Required Jenkins Credentials**
+5. **Optional Environment Variables**
+   - `SKIP_JENKINS`: Set to `true` to skip Jenkins pipeline execution (marks build as SUCCESS)
+   - `JENKINS_FAIL_BUILD`: Set to `true` to intentionally fail builds for testing
+
+6. **Required Jenkins Credentials**
    - **ID:** `docker-hub-credentials`
    - **Type:** Username with password
    - **Username:** Your Docker Hub username
@@ -102,6 +106,7 @@ Or via GitHub UI: `Settings → Secrets and variables → Actions → New reposi
   - PREPROD: `https://api.saas-preprod.beescloud.com` (default)
   - QA: `https://api.saas-qa.beescloud.com` (default)
   - Production: `https://api.cloudbees.io`
+- `SKIP_GHA`: Set to `true` to skip GitHub Actions workflow (optional)
 - `GH_CHECK_FAIL`: Set to `true` to intentionally fail GitHub Actions checks (optional)
 
 **Add variables via GitHub CLI:**

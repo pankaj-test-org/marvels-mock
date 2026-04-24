@@ -9,6 +9,14 @@ pipeline {
         stage('Initialize') {
             steps {
                 script {
+                    // Skip pipeline if SKIP_JENKINS is true
+                    if (env.SKIP_JENKINS == 'true') {
+                        echo "⏭️  Skipping Jenkins pipeline (SKIP_JENKINS=true)"
+                        currentBuild.result = 'SUCCESS'
+                        currentBuild.description = "Skipped"
+                        return
+                    }
+
                     echo '=== Environment Configuration ==='
                     echo "JENKINS_FAIL_BUILD: ${env.JENKINS_FAIL_BUILD}"
                     def shouldFail = env.JENKINS_FAIL_BUILD == 'true'
