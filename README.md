@@ -46,26 +46,33 @@ This repository validates that CloudBees GitHub Reporting plugin generates nativ
      - Pull request
 
 4. **Webhook Configuration**
+   
+   **⚠️ Critical:** Even if your GitHub App has the correct permissions, you MUST configure webhook event subscriptions per repository. Without these events, Jenkins won't receive Re-run notifications or send stage updates to GitHub.
+   
    - Ensure webhook is enabled in the repository settings
    - Webhook URL: `https://your-jenkins-instance.com/github-webhook/`
    - Events: Select "Let me select individual events" and enable:
-     - Pushes
-     - Pull requests
-     - Check runs
-     - Check suites
-
-5. **Environment Variables**
-   Configure in Jenkins job → Configure → Pipeline section:
+     - ✅ **Pushes** (triggers builds on commits)
+     - ✅ **Pull requests** (triggers builds on PRs)
+     - ✅ **Check runs** (required for Re-run button detection)
+     - ✅ **Check suites** (required for Re-run button detection)
    
-   | Variable | Default | Purpose |
-   |----------|---------|---------|
-   | `JENKINS_FAIL_BUILD` | `false` | Set to `true` to intentionally fail builds for testing re-run functionality |
+   **To verify webhook events:**
+   ```bash
+   gh api repos/pankaj-test-org/<repo-name>/hooks --jq '.[] | {id: .id, events: .events}'
+   ```
    
-   **To add environment variables:**
-   - Go to job configuration → Pipeline section
-   - Add environment block or use Jenkins Configuration as Code
+   **To update webhook events if missing:**
+   ```bash
+   gh api repos/pankaj-test-org/<repo-name>/hooks/<hook-id> \
+     --method PATCH \
+     --field 'events[]=push' \
+     --field 'events[]=pull_request' \
+     --field 'events[]=check_run' \
+     --field 'events[]=check_suite'
+   ```
 
-6. **Required Jenkins Credentials**
+5. **Required Jenkins Credentials**
    - **ID:** `docker-hub-credentials`
    - **Type:** Username with password
    - **Username:** Your Docker Hub username
@@ -79,55 +86,39 @@ The repository also includes a GitHub Actions workflow (`.github/workflows/gha-p
 - `DOCKER_USERNAME`: Docker Hub username
 - `DOCKER_PASSWORD`: Docker Hub token/password
 
+**Add secrets via GitHub CLI:**
+```bash
+# Add Docker Hub username
+gh secret set DOCKER_USERNAME --repo pankaj-test-org/marvels-mock
+
+# Add Docker Hub password/token
+gh secret set DOCKER_PASSWORD --repo pankaj-test-org/marvels-mock
+```
+
+Or via GitHub UI: `Settings → Secrets and variables → Actions → New repository secret`
+
 **Repository Variables:**
 - `CLOUDBEES_API_URL`: CloudBees Platform API URL (default: `https://api.saas-qa.beescloud.com`)
 - `GH_CHECK_FAIL`: Set to `true` to intentionally fail GitHub Actions checks (optional)
 
+**Add variables via GitHub CLI:**
+```bash
+# Add CloudBees API URL
+gh variable set CLOUDBEES_API_URL --repo pankaj-test-org/marvels-mock --body "https://api.saas-qa.beescloud.com"
+
+# Add GH_CHECK_FAIL flag (optional)
+gh variable set GH_CHECK_FAIL --repo pankaj-test-org/marvels-mock --body "false"
+```
+
+Or via GitHub UI: `Settings → Secrets and variables → Actions → Variables → New repository variable`
+
 ## Testing Re-run Functionality
 
-### Configure Build Failures (Optional)
+**Test Variables:**
+- **Jenkins:** Set `JENKINS_FAIL_BUILD=true` in job configuration → Environment section
+- **GitHub Actions:** Set `GH_CHECK_FAIL=true` as repository variable
 
-Control failures using environment/repository variables:
-
-**Jenkins:** `JENKINS_FAIL_BUILD` environment variable  
-**GitHub Actions:** `GH_CHECK_FAIL` repository variable
-
-**To enable intentional failures:**
-
-1. Go to Jenkins: `https://cm.pankajy-dev.me/job/cb-jenkins-test/configure`
-2. Scroll down to find **"Pipeline"** or **"Environment"** section
-3. Add environment variable:
-   - **Name:** `JENKINS_FAIL_BUILD`
-   - **Value:** `true`
-4. Click **"Save"*
-5. Next build will fail in Test stage
-6. Re-run button appears in GitHub checks
-7. Click Re-run → generates `ReRunCause`
-
-**To disable failures (normal builds):**
-
-1. Go to Jenkins job configuration
-2. Change `JENKINS_FAIL_BUILD` to `false` or delete the variable
-3. Save configuration
-4. Builds pass normally
-
-### Configuration Variables
-
-#### Jenkins: `JENKINS_FAIL_BUILD`
-- **Location:** Jenkins job configuration → Environment section
-- **Values:**
-  - `true` = Build fails intentionally in Test stage
-  - `false` or unset = Build passes normally
-- **Scope:** Applies to all branches in the multibranch pipeline
-
-#### GitHub Actions: `GH_CHECK_FAIL`
-- **Location:** GitHub repo → Settings → Secrets and variables → Actions → Variables
-- **Values:**
-  - `true` = GitHub check fails
-  - `false` or unset = GitHub check passes
-- **Purpose:** Control GitHub checks without modifying workflow code
-
-### Verify ReRunCause
+**Verify ReRunCause:**
 
 After clicking Re-run in GitHub, check Jenkins console output:
 

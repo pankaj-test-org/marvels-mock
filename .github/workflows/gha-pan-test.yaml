@@ -5,6 +5,7 @@ on:
 
 jobs:
   register-artifact:
+    name: Docker Build & Artifact Registration
     runs-on: ubuntu-latest
     permissions:
       id-token: write
