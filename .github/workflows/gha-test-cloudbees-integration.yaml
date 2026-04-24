@@ -34,11 +34,13 @@ jobs:
         if: always()
         env:
           CLOUDBEES_API_TOKEN: ${{ secrets.CLOUDBEES_API_TOKEN }}
+          CLOUDBEES_API_URL: ${{ env.CLOUDBEES_URL }}
           TEST_TYPE: 'JUNIT'
+          FOLDER_PATH: 'target/surefire-reports'
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
           test-type: 'JUNIT'
-          results-path: '**/target/surefire-reports/*.xml'
+          results-path: 'target/surefire-reports'
 
       - name: Build Docker Image
         run: |
