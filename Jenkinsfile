@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         // Centralized environment variable configuration
-        JENKINS_FAIL_BUILD = env.JENKINS_FAIL_BUILD ?: 'false'
     }
 
     stages {
