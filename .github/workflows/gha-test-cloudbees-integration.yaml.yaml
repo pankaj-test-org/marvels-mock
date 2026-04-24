@@ -53,6 +53,7 @@ jobs:
           url: "docker.io/pankajydev/gha-test-image:${{ env.IMAGE_TAG }}"
           version: ${{ env.IMAGE_TAG }}
           digest: ${{ env.IMAGE_DIGEST }}
+          label: "pan1"
 
       - name: Print artifact id
         run: |
