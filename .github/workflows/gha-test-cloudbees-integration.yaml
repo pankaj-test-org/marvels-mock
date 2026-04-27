@@ -172,6 +172,7 @@ jobs:
         # name: Simulate deployment
 
       - uses: cloudbees-io-gha/register-deployed-artifact@v0
+        # uses: docker://public.ecr.aws/cloudbees/actions/gha-register-deployed-artifact:main-8d819ee6c37734d240bc3e399c7515d85aa14f76
         # name: Register Deployed Artifact
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
