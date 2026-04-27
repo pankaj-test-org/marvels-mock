@@ -9,7 +9,7 @@ env:
 
 jobs:
   run-maven-tests:
-    # name: Run Maven Unit Tests
+    name: Run Maven Unit Tests
     runs-on: ubuntu-latest
     if: vars.SKIP_GHA != 'true'
     permissions:
@@ -51,7 +51,7 @@ jobs:
           results-path: 'target/surefire-reports'
 
   build-and-register-artifact:
-    # name: Build Docker Image & Register Artifact
+    name: Build Docker Image & Register Artifact
     runs-on: ubuntu-latest
     needs: [run-maven-tests]
     if: vars.SKIP_GHA != 'true'
@@ -142,7 +142,7 @@ jobs:
           format: "MARKDOWN"
 
   deploy-to-environment:
-    # name: Deploy Application to Environment
+    name: Deploy Application to Environment
     runs-on: ubuntu-latest
     needs: [build-and-register-artifact]
     permissions:
