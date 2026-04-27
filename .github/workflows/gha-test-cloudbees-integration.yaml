@@ -16,19 +16,17 @@ jobs:
       id-token: write
       contents: read
       checks: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Run Maven Tests
-        run: |
+      - run: |
           echo "Running Maven tests..."
           mvn -B clean test
 
@@ -40,15 +38,7 @@ jobs:
             echo "✅ Tests passed"
           fi
 
-#      - name: Upload test results
-#        uses: actions/upload-artifact@v4
-#        if: always()
-#        with:
-#          name: test-results
-#          path: target/surefire-reports/
-
-      - name: Publish JUnit Test Results
-        uses: cloudbees-io-gha/publish-test-results@v1
+      - uses: cloudbees-io-gha/publish-test-results@v1
         if: always()
         env:
           CLOUDBEES_API_TOKEN: ${{ secrets.CLOUDBEES_API_TOKEN }}
@@ -74,27 +64,25 @@ jobs:
       image_digest: ${{ steps.get-digest.outputs.digest }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Generate version number
-        id: version
+      - id: version
         run: |
           VERSION="1.0.${{ github.run_number }}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "IMAGE_TAG=$VERSION" >> $GITHUB_ENV
           echo "Generated version: $VERSION"
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -102,16 +90,14 @@ jobs:
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
 
-      - name: Get Image Digest
-        id: get-digest
+      - id: get-digest
         run: |
           DIGEST=$(docker buildx imagetools inspect ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} --format '{{json .Manifest}}' | jq -r .digest)
           echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
           echo "IMAGE_DIGEST=${DIGEST}" >> $GITHUB_ENV
           echo "Image digest: ${DIGEST}"
 
-      - name: Register Build Artifact
-        id: register-artifact
+      - id: register-artifact
         uses: cloudbees-io-gha/register-build-artifact@v3
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
@@ -122,14 +108,7 @@ jobs:
           type: docker
           label: "pan1"
 
-      - name: Add Labels to Artifact
-        uses: cloudbees-io-gha/label-artifact-version@v1
-        with:
-          artifact-id: ${{ steps.register-artifact.outputs.cbp_artifact_id }}
-          labels: "${{ github.ref_name }},docker,java,automated"
-
-      - name: Publish Build Evidence
-        uses: cloudbees-io-gha/publish-evidence-item@v1
+      - uses: cloudbees-io-gha/publish-evidence-item@v1
         env:
           CLOUDBEES_API_TOKEN: ${{ secrets.CLOUDBEES_API_TOKEN }}
         with:
@@ -171,26 +150,22 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Simulate deployment
-        run: |
-          echo "Deploying version ${{ needs.build.outputs.version }}"
-          echo "Image: ${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}"
-          echo "Digest: ${{ needs.build.outputs.image_digest }}"
+      - run: |
+          echo "Deploying version ${{ needs.build-and-register-artifact.outputs.version }}"
+          echo "Image: ${{ env.IMAGE_NAME }}:${{ needs.build-and-register-artifact.outputs.version }}"
+          echo "Digest: ${{ needs.build-and-register-artifact.outputs.image_digest }}"
           echo "Deployment completed successfully"
 
-      - name: Register Deployed Artifact
-        uses: cloudbees-io-gha/register-deployed-artifact@v0
+      - uses: cloudbees-io-gha/register-deployed-artifact@v0
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
-          artifact-id: ${{ needs.build.outputs.artifact_id }}
+          artifact-id: ${{ needs.build-and-register-artifact.outputs.artifact_id }}
           target-environment: pan101
           labels: pan1
 
-      - name: Publish Deployment Evidence
-        uses: cloudbees-io-gha/publish-evidence-item@v1
+      - uses: cloudbees-io-gha/publish-evidence-item@v1
         env:
           CLOUDBEES_API_TOKEN: ${{ secrets.CLOUDBEES_API_TOKEN }}
         with:
@@ -199,11 +174,11 @@ jobs:
             # Deployment Evidence
 
             ## Deployment Details
-            - **Version**: ${{ needs.build.outputs.version }}
+            - **Version**: ${{ needs.build-and-register-artifact.outputs.version }}
             - **Environment**: pan101
-            - **Artifact ID**: ${{ needs.build.outputs.artifact_id }}
-            - **Image**: `${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}`
-            - **Digest**: `${{ needs.build.outputs.image_digest }}`
+            - **Artifact ID**: ${{ needs.build-and-register-artifact.outputs.artifact_id }}
+            - **Image**: `${{ env.IMAGE_NAME }}:${{ needs.build-and-register-artifact.outputs.version }}`
+            - **Digest**: `${{ needs.build-and-register-artifact.outputs.image_digest }}`
 
             ## Workflow Info
             - **Run ID**: ${{ github.run_id }}
