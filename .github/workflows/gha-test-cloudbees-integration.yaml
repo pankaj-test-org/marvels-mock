@@ -9,7 +9,7 @@ env:
 
 jobs:
   run-maven-tests:
-    name: Run Maven Unit Tests  # Update this name to change display name for entire job
+#    name: Run Maven Unit Tests  # Update this name to change display name for entire job
     runs-on: ubuntu-latest
     if: vars.SKIP_GHA != 'true'
     permissions:
