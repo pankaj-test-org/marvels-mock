@@ -125,17 +125,6 @@ jobs:
           type: docker
           label: "pan1"
 
-      # Wait for artifact registration to propagate in CloudBees Platform backend
-      # This prevents 404 errors when labeling immediately after registration
-      - name: Wait for artifact registration to complete
-        run: sleep 3
-
-      - name: Add Labels to Artifact
-        uses: cloudbees-io-gha/label-artifact-version@v1
-        with:
-          artifact-id: ${{ steps.register-artifact.outputs.cbp_artifact_id }}
-          labels: "${{ github.ref_name }},docker,java,automated"
-
       - name: Publish Build Evidence
         uses: cloudbees-io-gha/publish-evidence-item@v1
         env:
