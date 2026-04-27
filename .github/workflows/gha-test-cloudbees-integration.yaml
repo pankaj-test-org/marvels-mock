@@ -1,4 +1,4 @@
-name: CI/CD Pipeline from Github
+#name: CI/CD Pipeline from Github
 
 on:
   push
@@ -8,8 +8,8 @@ env:
   IMAGE_NAME: pankajydev/gha-test-image
 
 jobs:
-  ci-cd-pipeline:
-    name: CI/CD Pipeline  # Update this name to change display name for entire workflow
+  run-maven-tests:
+    # name: Run Maven Unit Tests
     runs-on: ubuntu-latest
     if: vars.SKIP_GHA != 'true'
     permissions:
@@ -18,7 +18,6 @@ jobs:
       checks: write
 
     steps:
-      # ==================== Test Stage ====================
       - uses: actions/checkout@v6
 
       - uses: actions/setup-java@v4
@@ -51,7 +50,24 @@ jobs:
           test-type: 'JUNIT'
           results-path: 'target/surefire-reports'
 
-      # ==================== Build Stage ====================
+  build-and-register-artifact:
+    # name: Build Docker Image & Register Artifact
+    runs-on: ubuntu-latest
+    needs: [run-maven-tests]
+    if: vars.SKIP_GHA != 'true'
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      artifact_id: ${{ steps.register-artifact.outputs.cbp_artifact_id }}
+      image_digest: ${{ steps.get-digest.outputs.digest }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - id: version
         run: |
           VERSION="1.0.${{ github.run_number }}"
@@ -125,17 +141,27 @@ jobs:
             - **Actor**: ${{ github.actor }}
           format: "MARKDOWN"
 
-      # ==================== Deploy Stage ====================
+  deploy-to-environment:
+    # name: Deploy Application to Environment
+    runs-on: ubuntu-latest
+    needs: [build-and-register-artifact]
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
       - run: |
-          echo "Deploying version ${{ env.IMAGE_TAG }}"
-          echo "Image: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
-          echo "Digest: ${{ env.IMAGE_DIGEST }}"
+          echo "Deploying version ${{ needs.build-and-register-artifact.outputs.version }}"
+          echo "Image: ${{ env.IMAGE_NAME }}:${{ needs.build-and-register-artifact.outputs.version }}"
+          echo "Digest: ${{ needs.build-and-register-artifact.outputs.image_digest }}"
           echo "Deployment completed successfully"
 
       - uses: cloudbees-io-gha/register-deployed-artifact@v0
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
-          artifact-id: ${{ steps.register-artifact.outputs.cbp_artifact_id }}
+          artifact-id: ${{ needs.build-and-register-artifact.outputs.artifact_id }}
           target-environment: pan101
           labels: pan1
 
@@ -148,11 +174,11 @@ jobs:
             # Deployment Evidence
 
             ## Deployment Details
-            - **Version**: ${{ env.IMAGE_TAG }}
+            - **Version**: ${{ needs.build-and-register-artifact.outputs.version }}
             - **Environment**: pan101
-            - **Artifact ID**: ${{ steps.register-artifact.outputs.cbp_artifact_id }}
-            - **Image**: `${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}`
-            - **Digest**: `${{ env.IMAGE_DIGEST }}`
+            - **Artifact ID**: ${{ needs.build-and-register-artifact.outputs.artifact_id }}
+            - **Image**: `${{ env.IMAGE_NAME }}:${{ needs.build-and-register-artifact.outputs.version }}`
+            - **Digest**: `${{ needs.build-and-register-artifact.outputs.image_digest }}`
 
             ## Workflow Info
             - **Run ID**: ${{ github.run_id }}
