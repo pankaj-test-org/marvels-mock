@@ -173,17 +173,16 @@ jobs:
 
       - name: Simulate deployment
         run: |
-          echo "Deploying version ${{ needs.build.outputs.version }}"
-          echo "Image: ${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}"
-          echo "Digest: ${{ needs.build.outputs.image_digest }}"
+          echo "Deploying version ${{ needs.build-and-register-artifact.outputs.version }}"
+          echo "Image: ${{ env.IMAGE_NAME }}:${{ needs.build-and-register-artifact.outputs.version }}"
+          echo "Digest: ${{ needs.build-and-register-artifact.outputs.image_digest }}"
           echo "Deployment completed successfully"
 
       - name: Register Deployed Artifact
         uses: cloudbees-io-gha/register-deployed-artifact@v0
-#       uses: docker://public.ecr.aws/cloudbees/actions/gha-register-deployed-artifact:main-8d819ee6c37734d240bc3e399c7515d85aa14f76
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
-          artifact-id: ${{ needs.build.outputs.artifact_id }}
+          artifact-id: ${{ needs.build-and-register-artifact.outputs.artifact_id }}
           target-environment: pan101
           labels: pan1
 
@@ -197,11 +196,11 @@ jobs:
             # Deployment Evidence
 
             ## Deployment Details
-            - **Version**: ${{ needs.build.outputs.version }}
+            - **Version**: ${{ needs.build-and-register-artifact.outputs.version }}
             - **Environment**: pan101
-            - **Artifact ID**: ${{ needs.build.outputs.artifact_id }}
-            - **Image**: `${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}`
-            - **Digest**: `${{ needs.build.outputs.image_digest }}`
+            - **Artifact ID**: ${{ needs.build-and-register-artifact.outputs.artifact_id }}
+            - **Image**: `${{ env.IMAGE_NAME }}:${{ needs.build-and-register-artifact.outputs.version }}`
+            - **Digest**: `${{ needs.build-and-register-artifact.outputs.image_digest }}`
 
             ## Workflow Info
             - **Run ID**: ${{ github.run_id }}
