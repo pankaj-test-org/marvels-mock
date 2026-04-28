@@ -167,7 +167,7 @@ jobs:
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
           artifact-id: ${{ needs.build-and-register-artifact.outputs.artifact_id }}
-          target-environment: QA
+          target-environment: PAN
           labels: pan1
 
       - uses: cloudbees-io-gha/publish-evidence-item@v1
@@ -181,7 +181,7 @@ jobs:
 
             ## Deployment Details
             - **Version**: ${{ needs.build-and-register-artifact.outputs.version }}
-            - **Environment**: QA
+            - **Environment**: PAN
             - **Artifact ID**: ${{ needs.build-and-register-artifact.outputs.artifact_id }}
             - **Image**: `${{ env.IMAGE_NAME }}:${{ needs.build-and-register-artifact.outputs.version }}`
             - **Digest**: `${{ needs.build-and-register-artifact.outputs.image_digest }}`
