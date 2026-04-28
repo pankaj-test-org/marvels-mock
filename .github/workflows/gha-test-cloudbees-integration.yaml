@@ -9,7 +9,6 @@ env:
 
 jobs:
   run-maven-tests:
-    name: Run Maven Unit Tests
     runs-on: ubuntu-latest
     if: vars.SKIP_GHA != 'true'
     permissions:
@@ -19,10 +18,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-        name: Checkout repository
 
       - uses: actions/setup-java@v4
-        name: Setup Java environment
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -42,7 +39,7 @@ jobs:
         name: Run Maven tests
 
       - uses: cloudbees-io-gha/publish-test-results@v1
-        name: Publish test results to CloudBees
+#        name: Publish test results to CloudBees
         if: always()
         env:
           CLOUDBEES_API_TOKEN: ${{ secrets.CLOUDBEES_API_TOKEN }}
@@ -55,7 +52,7 @@ jobs:
           results-path: 'target/surefire-reports'
 
   build-and-register-artifact:
-    name: Build Docker Image & Register Artifact
+#    name: Build Docker Image & Register Artifact
     runs-on: ubuntu-latest
     needs: [run-maven-tests]
     if: vars.SKIP_GHA != 'true'
@@ -69,12 +66,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-        name: Checkout repository
         with:
           fetch-depth: 0
 
       - id: version
-        name: Generate version number
         run: |
           VERSION="1.0.${{ github.run_number }}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -82,16 +77,13 @@ jobs:
           echo "Generated version: $VERSION"
 
       - uses: docker/setup-buildx-action@v3
-        name: Setup Docker Buildx
 
       - uses: docker/login-action@v3
-        name: Login to Docker Hub
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - uses: docker/build-push-action@v6
-        name: Build and push Docker image
         with:
           context: .
           push: true
@@ -100,7 +92,6 @@ jobs:
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
 
       - id: get-digest
-        name: Get Docker image digest
         run: |
           DIGEST=$(docker buildx imagetools inspect ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} --format '{{json .Manifest}}' | jq -r .digest)
           echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
@@ -108,7 +99,7 @@ jobs:
           echo "Image digest: ${DIGEST}"
 
       - id: register-artifact
-        name: Register artifact with CloudBees
+#        name: Register artifact with CloudBees
         uses: cloudbees-io-gha/register-build-artifact@v3
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
@@ -120,7 +111,7 @@ jobs:
           label: "pan1"
 
       - uses: cloudbees-io-gha/publish-evidence-item@v1
-        name: Publish build evidence to CloudBees
+#        name: Publish build evidence to CloudBees
         env:
           CLOUDBEES_API_TOKEN: ${{ secrets.CLOUDBEES_API_TOKEN }}
         with:
@@ -154,7 +145,7 @@ jobs:
           format: "MARKDOWN"
 
   deploy-to-environment:
-    name: Deploy Application to Environment
+#    name: Deploy Application to Environment
     runs-on: ubuntu-latest
     needs: [build-and-register-artifact]
     permissions:
@@ -163,17 +154,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-        name: Checkout repository
 
       - run: |
           echo "Deploying version ${{ needs.build-and-register-artifact.outputs.version }}"
           echo "Image: ${{ env.IMAGE_NAME }}:${{ needs.build-and-register-artifact.outputs.version }}"
           echo "Digest: ${{ needs.build-and-register-artifact.outputs.image_digest }}"
           echo "Deployment completed successfully"
-        name: Deploy application
 
       - uses: cloudbees-io-gha/register-deployed-artifact@v0
-        name: Register deployed artifact with CloudBees
+#        name: Register deployed artifact with CloudBees
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
           artifact-id: ${{ needs.build-and-register-artifact.outputs.artifact_id }}
@@ -181,7 +170,7 @@ jobs:
           labels: pan1
 
       - uses: cloudbees-io-gha/publish-evidence-item@v1
-        name: Publish deployment evidence to CloudBees
+#        name: Publish deployment evidence to CloudBees
         env:
           CLOUDBEES_API_TOKEN: ${{ secrets.CLOUDBEES_API_TOKEN }}
         with:
@@ -206,4 +195,3 @@ jobs:
           echo "Job ID is: ${{ github.job }}"
           # This looks up the job name in the github context map
           echo "Job Name is: ${{ job.check_run_id }}"
-        name: Debug Job Name
