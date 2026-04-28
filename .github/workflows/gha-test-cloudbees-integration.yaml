@@ -36,7 +36,7 @@ jobs:
           else
             echo "✅ Tests passed"
           fi
-        name: Run Maven tests
+#        name: Run Maven tests
 
       - uses: cloudbees-io-gha/publish-test-results@v1
 #        name: Publish test results to CloudBees
@@ -103,7 +103,7 @@ jobs:
         uses: cloudbees-io-gha/register-build-artifact@v3
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
-          name: gha-test-image
+#          name: gha-test-image
           url: "docker.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           version: ${{ env.IMAGE_TAG }}
           digest: ${{ env.IMAGE_DIGEST }}
