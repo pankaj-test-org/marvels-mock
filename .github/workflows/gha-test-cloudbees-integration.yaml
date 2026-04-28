@@ -36,7 +36,7 @@ jobs:
           else
             echo "✅ Tests passed"
           fi
-        name: Run Maven tests
+#        name: Run Maven tests
 
       - uses: cloudbees-io-gha/publish-test-results@v1
 #        name: Publish test results to CloudBees
@@ -103,6 +103,7 @@ jobs:
         uses: cloudbees-io-gha/register-build-artifact@v3
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
+          # Below name is needed
           name: gha-test-image
           url: "docker.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           version: ${{ env.IMAGE_TAG }}
@@ -166,7 +167,7 @@ jobs:
         with:
           cloudbees-url: ${{ env.CLOUDBEES_URL }}
           artifact-id: ${{ needs.build-and-register-artifact.outputs.artifact_id }}
-          target-environment: QA
+          target-environment: PAN
           labels: pan1
 
       - uses: cloudbees-io-gha/publish-evidence-item@v1
@@ -180,7 +181,7 @@ jobs:
 
             ## Deployment Details
             - **Version**: ${{ needs.build-and-register-artifact.outputs.version }}
-            - **Environment**: QA
+            - **Environment**: PAN
             - **Artifact ID**: ${{ needs.build-and-register-artifact.outputs.artifact_id }}
             - **Image**: `${{ env.IMAGE_NAME }}:${{ needs.build-and-register-artifact.outputs.version }}`
             - **Digest**: `${{ needs.build-and-register-artifact.outputs.image_digest }}`
