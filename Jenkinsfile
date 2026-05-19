@@ -17,14 +17,33 @@ pipeline {
                         return
                     }
 
-                    echo '=== Environment Configuration ==='
-                    echo "JENKINS_FAIL_BUILD: ${env.JENKINS_FAIL_BUILD}"
-                    def shouldFail = env.JENKINS_FAIL_BUILD == 'true'
-                    echo "Build will ${shouldFail ? 'FAIL' : 'PASS'}"
-
                     // Set image tag with build number
                     env.IMAGE_TAG = "1.0.${env.BUILD_NUMBER}"
                     echo "Image tag: ${env.IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('List Custom Environment Variables') {
+            steps {
+                script {
+                    echo '=== Custom Environment Variables ==='
+                    echo "SKIP_JENKINS: ${env.SKIP_JENKINS ?: 'not set'}"
+                    echo "  └─ Likely values: true | false | <not set>"
+                    echo "  └─ Purpose: Skip entire pipeline when true"
+                    echo ''
+                    echo "JENKINS_FAIL_BUILD: ${env.JENKINS_FAIL_BUILD ?: 'not set'}"
+                    echo "  └─ Likely values: true | false | <not set>"
+                    echo "  └─ Purpose: Intentionally fail build for testing"
+                    echo ''
+                    echo "ENABLE_DOCKER_PUSH: ${env.ENABLE_DOCKER_PUSH ?: 'not set (will skip docker push)'}"
+                    echo "  └─ Likely values: true | <not set>"
+                    echo "  └─ Purpose: Enable pushing Docker image to Docker Hub"
+                    echo "  └─ Required credentials: docker-hub-credentials (DOCKER_USERNAME, DOCKER_PASSWORD)"
+                    echo ''
+                    echo "ENABLE_DEPLOYMENT: ${env.ENABLE_DEPLOYMENT ?: 'not set (will skip deployment)'}"
+                    echo "  └─ Likely values: true | <not set>"
+                    echo "  └─ Purpose: Enable deployment stage"
                 }
             }
         }
@@ -66,6 +85,9 @@ pipeline {
         }
 
         stage('Push Docker Image') {
+            when {
+                expression { env.ENABLE_DOCKER_PUSH == 'true' }
+            }
             steps {
                 script {
                     echo 'Pushing Docker image to Docker Hub...'
@@ -112,6 +134,9 @@ pipeline {
         }
 
         stage('Deploy') {
+            when {
+                expression { env.ENABLE_DEPLOYMENT == 'true' }
+            }
             steps {
                 echo "Artifact ID : ${env.ARTIFACT_ID}"
                 registerDeployedArtifactMetadata(
