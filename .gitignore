@@ -54,6 +54,7 @@ hs_err_pid*
 node_modules/
 results.json
 blob-report/
+html-test-results/
 playwright-report/
 test-results/
 

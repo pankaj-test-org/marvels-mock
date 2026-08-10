@@ -24,6 +24,7 @@ Two CloudBees platform workflows publish test results to **Run details → Test 
 |---|---|---|---|
 | `.cloudbees/workflows/java-test-results.yaml` | Maven + JUnit 5 (`src/test/java`) | `junit` | `target/surefire-reports` (directory) |
 | `.cloudbees/workflows/playwright-test-results.yaml` | Playwright (`e2e/`) | `playwright` | `results.json` (single file) |
+| `.cloudbees/workflows/cbp-45873-playwright-overwrite.yaml` | Playwright (`e2e-cbp-45873/`) | `playwright` | `results.json` (single file) |
 
 Both publish with `if: ${{ always() }}` so results still upload when tests fail.
 
@@ -53,6 +54,72 @@ Two gotchas it handles:
 Don't try to shrink the pull by swapping in `node:20-bookworm-slim` (68MB): it has no
 browsers, so `playwright install --with-deps` adds ~63s — measurably worse than the
 one-time cached pull.
+
+### CBP-45873 repro — `results.json` overwritten by successive runs
+
+`cbp-45873-playwright-overwrite.yaml` reproduces [CBP-45873](https://cloudbees.atlassian.net/browse/CBP-45873)
+(*Intermittent failures in publishing test results*). It is `workflow_dispatch`-only
+and has its own suite (`e2e-cbp-45873/`) and config
+(`playwright.cbp-45873.config.ts`), so the main Playwright pipeline is unaffected.
+
+The bug is not in `publish-test-results`. The `cbp-test-automation` pods invoke
+`playwright test` several times in one step — `@Login`, then `@cleanup`, then the
+main suite — and the JSON reporter rewrites `results.json` on every invocation.
+Only the final suite reaches the publish step; the earlier tests are lost
+silently, and every run still exits 0, so the pipeline is green with incomplete
+results. This is why 8 of 9 pods published nothing while `unify-ci` worked: it
+alone had the blob-merge snippet.
+
+Run it with the `apply-fix` input to compare:
+
+| `apply-fix` | Published |
+|---|---|
+| `false` (default) | **3 of 7** — only `@regression`, the last run |
+| `true` | **7 of 7** — merged from per-run blob reports |
+
+The fix keys each run's blob report by `JOB_NAME` and merges them before
+publishing, matching [`unify-ci/action.yaml`](https://github.com/cloudbees/cbp-test-automation/blob/main/.cloudbees/pods/unify-ci/action.yaml#L100-L115):
+
+```bash
+JOB_NAME=Login npx playwright test --grep '@Login'      # -> blob-report/report-Login.zip
+# ... one run per tag ...
+npx playwright merge-reports --reporter=json ./blob-report > results.json
+```
+
+Without `JOB_NAME` every run writes `report-.zip` and overwrites the previous
+blob too, so merging alone is not enough — the name must be unique per run.
+
+Reproduce locally:
+
+```bash
+# broken: prints expected=3
+for t in @Login @cleanup @regression; do
+  npx playwright test -c playwright.cbp-45873.config.ts --grep $t
+done
+node -e "console.log(require('./results.json').stats)"
+
+# fixed: prints expected=7
+rm -rf blob-report results.json
+for t in Login:@Login Cleanup:@cleanup Regression:@regression; do
+  JOB_NAME=${t%%:*} npx playwright test -c playwright.cbp-45873.config.ts --grep ${t##*:}
+done
+npx playwright merge-reports --reporter=json ./blob-report > results.json
+```
+
+### Separately: a real parser bug in the action
+
+`util/playwright.go` drops tests when a spec file has **both** a top-level test
+and a `describe` block:
+
+```go
+if len(suite.SuitesPW) > 0 {
+    for _, suitePW := range suite.SuitesPW { ... }  // nested specs only
+} else if len(suite.Specs) > 0 { ... }              // never reached
+```
+
+`e2e/character-page.spec.ts` has that shape, so the main suite publishes 9 of its
+10 passing tests. Unrelated to CBP-45873's overwrite, but it also loses tests
+silently.
 
 ### Test outcomes
 

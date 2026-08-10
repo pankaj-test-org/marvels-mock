@@ -1,0 +1,55 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: CBP-45873 - Playwright results.json overwrite
+on:
+  workflow_dispatch:
+    inputs:
+      apply-fix:
+        description: "Merge blob reports before publishing (false reproduces the bug)"
+        type: string
+        default: "false"
+
+jobs:
+  cbp-45873:
+    steps:
+      - name: Checkout
+        uses: cloudbees-io/checkout@v1
+
+      # Three `playwright test` invocations in one step, mirroring the
+      # cbp-test-automation pods that run @Login and @cleanup before the main
+      # suite. Without JOB_NAME each run rewrites results.json, so only the
+      # last suite reaches the publish step - the CBP-45873 failure mode.
+      - name: Run tagged Playwright suites
+        kind: test
+        uses: docker://mcr.microsoft.com/playwright:v1.60.0-noble
+        env:
+          APPLY_FIX: ${{ inputs.apply-fix }}
+        run: |
+          npm ci
+          CFG=playwright.cbp-45873.config.ts
+
+          if [ "$APPLY_FIX" = "true" ]; then
+            echo "=== FIXED: one blob report per run, merged at the end ==="
+            JOB_NAME=Login      npx playwright test -c $CFG --grep '@Login'
+            JOB_NAME=Cleanup    npx playwright test -c $CFG --grep '@cleanup'
+            JOB_NAME=Regression npx playwright test -c $CFG --grep '@regression'
+            ls -lh blob-report/
+            rm -f results.json
+            npx playwright merge-reports --reporter=json ./blob-report > results.json
+          else
+            echo "=== BROKEN: every run overwrites the same results.json ==="
+            npx playwright test -c $CFG --grep '@Login'
+            npx playwright test -c $CFG --grep '@cleanup'
+            npx playwright test -c $CFG --grep '@regression'
+          fi
+
+          echo "--- expected 7 tests; 'expected' below is what gets published ---"
+          node -e "console.log(JSON.stringify(require('./results.json').stats))"
+
+      - name: Publish test results
+        kind: test
+        uses: cloudbees-io/publish-test-results@v2
+        if: ${{ always() }}
+        with:
+          test-type: PLAYWRIGHT
+          results-path: ${{ cloudbees.workspace }}/results.json
