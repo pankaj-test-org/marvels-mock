@@ -13,12 +13,25 @@ jobs:
       - name: Checkout
         uses: cloudbees-io/checkout@v1
 
+      # failure.ignore keeps the step green on the intentionally flaky test so
+      # the XML is still written and the publish step has something to read
       - name: Run Maven tests
         kind: test
         uses: docker://maven:3.9-eclipse-temurin-17
         run: |
-          mvn -B -Dmaven.repo.local=${{ cloudbees.workspace }}/.m2 clean test
-          ls -l ${{ cloudbees.workspace }}/target/surefire-reports/
+          mvn -B -Dmaven.repo.local=${{ cloudbees.workspace }}/.m2 \
+              -Dmaven.test.failure.ignore=true clean test
+
+      - name: Inspect surefire output
+        if: ${{ always() }}
+        uses: docker://alpine:3.19
+        shell: sh
+        run: |
+          echo "workspace=[${{ cloudbees.workspace }}]  pwd=[$(pwd)]"
+          echo "--- xml files anywhere in workspace ---"
+          find ${{ cloudbees.workspace }} -name 'TEST-*.xml' 2>/dev/null || echo "none found"
+          echo "--- target/surefire-reports ---"
+          ls -la ${{ cloudbees.workspace }}/target/surefire-reports/ 2>&1 || echo "directory does not exist"
 
       - name: Publish test results
         kind: test
