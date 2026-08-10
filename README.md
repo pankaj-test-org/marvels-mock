@@ -31,6 +31,29 @@ Both publish with `if: ${{ always() }}` so results still upload when tests fail.
 
 The docs page shows `folder-name:` in its Go and Playwright examples — that is **stale v1 syntax**. The `action.yml` at tag `v2` declares only `test-type` and `results-path` (it maps `results-path` to `folderName` internally, which is where the doc drift comes from). Other repos in this test org are inconsistent on this; prefer `@v2` + `results-path`.
 
+### Speeding up runs — preload step images
+
+The Playwright suite itself takes ~1s for 10 tests; nearly all the wall-clock is the
+**~880MB compressed image pull** (~110s cold). Preload the step images into the local
+k3d cluster once:
+
+```bash
+./scripts/preload-ci-images.sh
+```
+
+Images are pinned to tags (not `:latest`), so Kubernetes' default `IfNotPresent` pull
+policy uses the cache. Re-run the script after recreating the cluster or bumping a tag.
+
+Two gotchas it handles:
+- **Node architecture.** The k3d nodes are `arm64`; a plain `docker pull` on an Intel
+  host (or with a stale amd64 copy cached) imports an image the nodes can't run.
+- **All nodes, not one.** `k3d image import` must cover every node or a run scheduled
+  on an un-primed node still cold-pulls.
+
+Don't try to shrink the pull by swapping in `node:20-bookworm-slim` (68MB): it has no
+browsers, so `playwright install --with-deps` adds ~63s — measurably worse than the
+one-time cached pull.
+
 ### Test outcomes
 
 - **Playwright: 10 tests, always green.** Fully hermetic — `page.setContent()` only, no network or running service required.
