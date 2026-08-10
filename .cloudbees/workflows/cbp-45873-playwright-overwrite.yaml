@@ -2,12 +2,9 @@ apiVersion: automation.cloudbees.io/v1alpha1
 kind: workflow
 name: CBP-45873 - Playwright results.json overwrite
 on:
-  workflow_dispatch:
-    inputs:
-      blank-last-run:
-        description: "true = final run collects no tests and blanks results.json (empty Test results tab)"
-        type: string
-        default: "true"
+  push:
+    branches:
+      - "**"
 
 jobs:
   cbp-45873:
@@ -20,17 +17,19 @@ jobs:
       # suite. The JSON reporter rewrites results.json every time, so only the
       # last invocation survives to the publish step.
       #
-      # blank-last-run=true makes that last invocation collect zero tests, so
+      # BLANK_LAST_RUN=true makes that last invocation collect zero tests, so
       # results.json ends up {"suites":[],"expected":0} while the step still
-      # exits 0 - a green run with an empty Test results tab.
+      # exits 0 - a green run with an empty Test results tab. Flip it to false
+      # here to turn the bug off and publish the 2 teardown tests instead.
       - name: Run tagged Playwright suites
         kind: test
         uses: docker://mcr.microsoft.com/playwright:v1.60.0-noble
         env:
-          BLANK_LAST_RUN: ${{ inputs.blank-last-run }}
+          BLANK_LAST_RUN: "true"
         run: |
           npm ci
           CFG=playwright.cbp-45873.config.ts
+          echo "BLANK_LAST_RUN=$BLANK_LAST_RUN"
 
           show() {
             node -e "const s=require('./results.json').stats;console.log('    results.json -> expected='+s.expected+' skipped='+s.skipped)"
