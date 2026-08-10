@@ -4,10 +4,10 @@ name: CBP-45873 - Playwright results.json overwrite
 on:
   workflow_dispatch:
     inputs:
-      apply-fix:
-        description: "Merge blob reports before publishing (false reproduces the bug)"
+      blank-last-run:
+        description: "true = final run collects no tests and blanks results.json (empty Test results tab)"
         type: string
-        default: "false"
+        default: "true"
 
 jobs:
   cbp-45873:
@@ -15,36 +15,45 @@ jobs:
       - name: Checkout
         uses: cloudbees-io/checkout@v1
 
-      # Three `playwright test` invocations in one step, mirroring the
-      # cbp-test-automation pods that run @Login and @cleanup before the main
-      # suite. Without JOB_NAME each run rewrites results.json, so only the
-      # last suite reaches the publish step - the CBP-45873 failure mode.
+      # Four `playwright test` invocations in one step, mirroring the
+      # cbp-test-automation pods that run @Login and @cleanup around the main
+      # suite. The JSON reporter rewrites results.json every time, so only the
+      # last invocation survives to the publish step.
+      #
+      # blank-last-run=true makes that last invocation collect zero tests, so
+      # results.json ends up {"suites":[],"expected":0} while the step still
+      # exits 0 - a green run with an empty Test results tab.
       - name: Run tagged Playwright suites
         kind: test
         uses: docker://mcr.microsoft.com/playwright:v1.60.0-noble
         env:
-          APPLY_FIX: ${{ inputs.apply-fix }}
+          BLANK_LAST_RUN: ${{ inputs.blank-last-run }}
         run: |
           npm ci
           CFG=playwright.cbp-45873.config.ts
 
-          if [ "$APPLY_FIX" = "true" ]; then
-            echo "=== FIXED: one blob report per run, merged at the end ==="
-            JOB_NAME=Login      npx playwright test -c $CFG --grep '@Login'
-            JOB_NAME=Cleanup    npx playwright test -c $CFG --grep '@cleanup'
-            JOB_NAME=Regression npx playwright test -c $CFG --grep '@regression'
-            ls -lh blob-report/
-            rm -f results.json
-            npx playwright merge-reports --reporter=json ./blob-report > results.json
-          else
-            echo "=== BROKEN: every run overwrites the same results.json ==="
-            npx playwright test -c $CFG --grep '@Login'
-            npx playwright test -c $CFG --grep '@cleanup'
-            npx playwright test -c $CFG --grep '@regression'
-          fi
+          show() {
+            node -e "const s=require('./results.json').stats;console.log('    results.json -> expected='+s.expected+' skipped='+s.skipped)"
+          }
 
-          echo "--- expected 7 tests; 'expected' below is what gets published ---"
-          node -e "console.log(JSON.stringify(require('./results.json').stats))"
+          echo "=== run 1/4: @Login ==="
+          npx playwright test -c $CFG --grep '@Login'; show
+          echo "=== run 2/4: @cleanup ==="
+          npx playwright test -c $CFG --grep '@cleanup'; show
+          echo "=== run 3/4: @regression ==="
+          npx playwright test -c $CFG --grep '@regression'; show
+
+          echo "=== run 4/4: @teardown ==="
+          if [ "$BLANK_LAST_RUN" = "true" ]; then
+            echo "RUN_TEARDOWN unset -> collects nothing, overwrites results.json with an empty report"
+            npx playwright test -c $CFG --grep '@teardown' --pass-with-no-tests
+          else
+            echo "RUN_TEARDOWN=true -> contributes 2 real tests"
+            RUN_TEARDOWN=true npx playwright test -c $CFG --grep '@teardown'
+          fi
+          show
+
+          echo "--- 9 tests ran across the 4 invocations; the count above is all that gets published ---"
 
       - name: Publish test results
         kind: test

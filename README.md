@@ -65,46 +65,55 @@ and has its own suite (`e2e-cbp-45873/`) and config
 The bug is not in `publish-test-results`. The `cbp-test-automation` pods invoke
 `playwright test` several times in one step — `@Login`, then `@cleanup`, then the
 main suite — and the JSON reporter rewrites `results.json` on every invocation.
-Only the final suite reaches the publish step; the earlier tests are lost
-silently, and every run still exits 0, so the pipeline is green with incomplete
-results. This is why 8 of 9 pods published nothing while `unify-ci` worked: it
-alone had the blob-merge snippet.
+Only the last invocation survives to the publish step, and every run exits 0, so
+the pipeline stays green while results go missing. This is why 8 of 9 pods
+published nothing while `unify-ci` worked: it alone merged blob reports.
 
-Run it with the `apply-fix` input to compare:
+The workflow runs four tagged invocations (9 tests total) and the
+`blank-last-run` input controls what the final one does:
 
-| `apply-fix` | Published |
-|---|---|
-| `false` (default) | **3 of 7** — only `@regression`, the last run |
-| `true` | **7 of 7** — merged from per-run blob reports |
+| `blank-last-run` | Final `results.json` | Test results tab |
+|---|---|---|
+| `true` (default) | `expected=0, suites=0` | **empty** — "No results found" |
+| `false` | `expected=2, suites=1` | 2 teardown tests |
 
-The fix keys each run's blob report by `JOB_NAME` and merges them before
-publishing, matching [`unify-ci/action.yaml`](https://github.com/cloudbees/cbp-test-automation/blob/main/.cloudbees/pods/unify-ci/action.yaml#L100-L115):
+Either way only the last invocation is published — the intermediate counts go
+`2 → 2 → 3` for 7 tests run, so results are already being lost before the final
+run. `blank-last-run=true` takes it to zero, reproducing the empty tab from the
+ticket exactly: green run, nothing published.
 
-```bash
-JOB_NAME=Login npx playwright test --grep '@Login'      # -> blob-report/report-Login.zip
-# ... one run per tag ...
-npx playwright merge-reports --reporter=json ./blob-report > results.json
-```
-
-Without `JOB_NAME` every run writes `report-.zip` and overwrites the previous
-blob too, so merging alone is not enough — the name must be unique per run.
+The blanking works because `e2e-cbp-45873/zz-teardown.spec.ts` only registers its
+`describe` block when `RUN_TEARDOWN=true`. Unset, the invocation collects no
+tests, and `--pass-with-no-tests` keeps it green — but the JSON reporter still
+writes `results.json`, wiping the earlier runs. (Without that flag Playwright
+exits 1 with "No tests found", which would redden the step and hide the bug.)
 
 Reproduce locally:
 
 ```bash
-# broken: prints expected=3
+rm -rf results.json blob-report
 for t in @Login @cleanup @regression; do
   npx playwright test -c playwright.cbp-45873.config.ts --grep $t
+  node -e "console.log(require('./results.json').stats.expected)"   # 2, 2, 3
 done
-node -e "console.log(require('./results.json').stats)"
 
-# fixed: prints expected=7
-rm -rf blob-report results.json
-for t in Login:@Login Cleanup:@cleanup Regression:@regression; do
-  JOB_NAME=${t%%:*} npx playwright test -c playwright.cbp-45873.config.ts --grep ${t##*:}
-done
-npx playwright merge-reports --reporter=json ./blob-report > results.json
+# blank the file, still exit 0
+npx playwright test -c playwright.cbp-45873.config.ts --grep '@teardown' --pass-with-no-tests
+node -e "console.log(require('./results.json').stats)"   # expected: 0
+
+# keep the last run non-empty
+RUN_TEARDOWN=true npx playwright test -c playwright.cbp-45873.config.ts --grep '@teardown'
+node -e "console.log(require('./results.json').stats)"   # expected: 2
 ```
+
+The `JOB_NAME`-keyed blob report + `merge-reports` approach from
+[`unify-ci/action.yaml`](https://github.com/cloudbees/cbp-test-automation/blob/main/.cloudbees/pods/unify-ci/action.yaml#L100-L115)
+is the candidate fix, to be evaluated against this pipeline. Note that without a
+unique `JOB_NAME` every run writes `report-.zip` and overwrites the previous blob
+too — so merging alone is not sufficient, which is likely why the first attempt
+on the ticket still showed an empty tab. `playwright.cbp-45873.config.ts` already
+attaches the blob reporter whenever `JOB_NAME` is set, so the fix can be tried
+without touching the specs.
 
 ### Separately: a real parser bug in the action
 
