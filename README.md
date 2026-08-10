@@ -5,6 +5,7 @@ Test repository for CloudBees CI + GitHub integration with ReRunCause testing.
 ## Table of Contents
 
 - [Purpose](#purpose)
+- [CloudBees test results pipelines](#cloudbees-test-results-pipelines)
 - [Jenkins Multibranch Pipeline Setup](#jenkins-multibranch-pipeline-setup)
   - [Prerequisites](#prerequisites)
   - [Pipeline Configuration](#pipeline-configuration)
@@ -14,6 +15,38 @@ Test repository for CloudBees CI + GitHub integration with ReRunCause testing.
 ## Purpose
 
 This repository validates that CloudBees GitHub Reporting plugin generates native `ReRunCause` when GitHub's Re-run button is clicked. Used to test the CBP-31531 fix in Platform.
+
+## CloudBees test results pipelines
+
+Two CloudBees platform workflows publish test results to **Run details → Test results** and the **Analytics → Test insights** dashboard, using [`cloudbees-io/publish-test-results`](https://docs.cloudbees.com/docs/cloudbees-unify/latest/continuous-integration/how-to-guides/publish-test-results).
+
+| Workflow | Tests | `test-type` | `results-path` |
+|---|---|---|---|
+| `.cloudbees/workflows/java-test-results.yaml` | Maven + JUnit 5 (`src/test/java`) | `junit` | `target/surefire-reports` (directory) |
+| `.cloudbees/workflows/playwright-test-results.yaml` | Playwright (`e2e/`) | `playwright` | `results.json` (single file) |
+
+Both publish with `if: ${{ always() }}` so results still upload when tests fail.
+
+### ⚠️ Use `@v2` with `results-path`, not `folder-name`
+
+The docs page shows `folder-name:` in its Go and Playwright examples — that is **stale v1 syntax**. The `action.yml` at tag `v2` declares only `test-type` and `results-path` (it maps `results-path` to `folderName` internally, which is where the doc drift comes from). Other repos in this test org are inconsistent on this; prefer `@v2` + `results-path`.
+
+### Test outcomes
+
+- **Playwright: 10 tests, always green.** Fully hermetic — `page.setContent()` only, no network or running service required.
+- **Java: 6 tests, intentionally flaky (~50% red).** `MarvelMockControllerTests.testGetQueryParam_withEmptyValue` ends with a deliberate coin flip (commit `5d54d03`), so repeated runs exercise both pass and failure rendering in the Test results tab without needing a toggle. Unlucky runs mark the workflow failed — that's expected. To get a green build while still recording the failure in the XML, add `-Dmaven.test.failure.ignore=true` to the `mvn` command.
+
+### Running locally
+
+```bash
+mvn -B clean test                 # 6 tests, 0-1 failures; writes target/surefire-reports/TEST-*.xml
+npm install && npx playwright install chromium   # first time only
+npx playwright test               # 10 tests; writes results.json
+```
+
+The Playwright CI image (`mcr.microsoft.com/playwright:v1.60.0-noble`) ships browsers preinstalled, so `playwright install` is not needed in the workflow. Keep the image tag pinned to the `@playwright/test` version in `package.json` to avoid browser-version mismatch errors.
+
+Unlike the `cloudbees-io-gha/*` actions in `.github/workflows/`, these platform-native workflows need **no `cloudbees-url` input and no `CLOUDBEES_API_TOKEN` secret** — the runner supplies `cloudbees.api.url` and `cloudbees.api.token` implicitly.
 
 ## Jenkins Multibranch Pipeline Setup
 

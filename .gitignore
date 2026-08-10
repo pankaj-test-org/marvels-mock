@@ -49,3 +49,13 @@ Thumbs.db
 # Java
 *.class
 hs_err_pid*
+
+# Node / Playwright
+node_modules/
+results.json
+blob-report/
+playwright-report/
+test-results/
+
+# Maven local repo when using -Dmaven.repo.local
+/.m2/

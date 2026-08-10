@@ -1,0 +1,29 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: Cloudbees workflow test
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+jobs:
+  build-and-deploy:
+    steps:
+      - name: Say hello
+        run: |
+          echo "hello world"
+        uses: docker://golang:1.20.3-alpine3.17
+        shell: sh
+      - name: Build and publish artifact
+        id: build
+        with:
+          version: 1.0.0
+          url: docker.io/test/artifact/cbp:1.0.0
+          name: TestArtifactCBP
+        uses: cloudbees-io/register-build-artifact@v2
+      - name: deploy
+        kind: deploy
+        with:
+          artifact-id: ${{ steps.build.outputs.artifact-id }}
+          target-environment: PANPREPRODTEST
+        uses: cloudbees-io/register-deployed-artifact@v2
