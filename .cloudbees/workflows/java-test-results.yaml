@@ -1,0 +1,57 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: Java tests - publish JUnit results
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+jobs:
+  java-tests:
+    steps:
+      - name: Checkout
+        uses: cloudbees-io/checkout@v1
+
+      # failure.ignore keeps the step green on the intentionally flaky test so
+      # the XML is still written and the publish step has something to read
+      - name: Run Maven tests
+        kind: test
+        uses: docker://maven:3.9-eclipse-temurin-17
+        run: |
+          mvn -B -Dmaven.repo.local=${{ cloudbees.workspace }}/.m2 \
+              -Dmaven.test.failure.ignore=true clean test
+
+      - name: Inspect surefire output
+        if: ${{ always() }}
+        uses: docker://alpine:3.19
+        shell: sh
+        run: |
+          echo "workspace=[${{ cloudbees.workspace }}]  pwd=[$(pwd)]"
+          echo "--- xml files anywhere in workspace ---"
+          find ${{ cloudbees.workspace }} -name 'TEST-*.xml' 2>/dev/null || echo "none found"
+          echo "--- target/surefire-reports ---"
+          ls -la ${{ cloudbees.workspace }}/target/surefire-reports/ 2>&1 || echo "directory does not exist"
+
+      - name: Publish test results
+        kind: test
+        uses: cloudbees-io/publish-test-results@v2
+        if: ${{ always() }}
+        with:
+          test-type: JUNIT
+          results-path: ${{ cloudbees.workspace }}/target/surefire-reports
+
+#      - name: Register build artifact
+#        id: build
+#        uses: cloudbees-io/register-build-artifact@v2
+#        with:
+#          name: marvel-mock-service
+#          version: 0.0.1-${{ cloudbees.run_id }}
+#          url: docker.io/pankajydev/gha-test-image:0.0.1
+
+#      - name: Deploy
+#        kind: deploy
+#        uses: cloudbees-io/register-deployed-artifact@v2
+#        with:
+#          artifact-id: ${{ steps.build.outputs.artifact-id }}
+#          target-environment: PANPREPRODTEST
