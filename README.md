@@ -24,6 +24,7 @@ Two CloudBees platform workflows publish test results to **Run details → Test 
 |---|---|---|---|
 | `.cloudbees/workflows/java-test-results.yaml` | Maven + JUnit 5 (`src/test/java`) | `junit` | `target/surefire-reports` (directory) |
 | `.cloudbees/workflows/playwright-test-results.yaml` | Playwright (`e2e/`) | `playwright` | `results.json` (single file) |
+| `.cloudbees/workflows/cbp-45873-playwright-overwrite.yaml` | Playwright (`e2e-cbp-45873/`) | `playwright` | `results.json` (single file) |
 
 Both publish with `if: ${{ always() }}` so results still upload when tests fail.
 
@@ -53,6 +54,81 @@ Two gotchas it handles:
 Don't try to shrink the pull by swapping in `node:20-bookworm-slim` (68MB): it has no
 browsers, so `playwright install --with-deps` adds ~63s — measurably worse than the
 one-time cached pull.
+
+### CBP-45873 repro — `results.json` overwritten by successive runs
+
+`cbp-45873-playwright-overwrite.yaml` reproduces [CBP-45873](https://cloudbees.atlassian.net/browse/CBP-45873)
+(*Intermittent failures in publishing test results*). It is `workflow_dispatch`-only
+and has its own suite (`e2e-cbp-45873/`) and config
+(`playwright.cbp-45873.config.ts`), so the main Playwright pipeline is unaffected.
+
+The bug is not in `publish-test-results`. The `cbp-test-automation` pods invoke
+`playwright test` several times in one step — `@Login`, then `@cleanup`, then the
+main suite — and the JSON reporter rewrites `results.json` on every invocation.
+Only the last invocation survives to the publish step, and every run exits 0, so
+the pipeline stays green while results go missing. This is why 8 of 9 pods
+published nothing while `unify-ci` worked: it alone merged blob reports.
+
+The workflow runs four tagged invocations (9 tests total) and the
+`blank-last-run` input controls what the final one does:
+
+| `blank-last-run` | Final `results.json` | Test results tab |
+|---|---|---|
+| `true` (default) | `expected=0, suites=0` | **empty** — "No results found" |
+| `false` | `expected=2, suites=1` | 2 teardown tests |
+
+Either way only the last invocation is published — the intermediate counts go
+`2 → 2 → 3` for 7 tests run, so results are already being lost before the final
+run. `blank-last-run=true` takes it to zero, reproducing the empty tab from the
+ticket exactly: green run, nothing published.
+
+The blanking works because `e2e-cbp-45873/zz-teardown.spec.ts` only registers its
+`describe` block when `RUN_TEARDOWN=true`. Unset, the invocation collects no
+tests, and `--pass-with-no-tests` keeps it green — but the JSON reporter still
+writes `results.json`, wiping the earlier runs. (Without that flag Playwright
+exits 1 with "No tests found", which would redden the step and hide the bug.)
+
+Reproduce locally:
+
+```bash
+rm -rf results.json blob-report
+for t in @Login @cleanup @regression; do
+  npx playwright test -c playwright.cbp-45873.config.ts --grep $t
+  node -e "console.log(require('./results.json').stats.expected)"   # 2, 2, 3
+done
+
+# blank the file, still exit 0
+npx playwright test -c playwright.cbp-45873.config.ts --grep '@teardown' --pass-with-no-tests
+node -e "console.log(require('./results.json').stats)"   # expected: 0
+
+# keep the last run non-empty
+RUN_TEARDOWN=true npx playwright test -c playwright.cbp-45873.config.ts --grep '@teardown'
+node -e "console.log(require('./results.json').stats)"   # expected: 2
+```
+
+The `JOB_NAME`-keyed blob report + `merge-reports` approach from
+[`unify-ci/action.yaml`](https://github.com/cloudbees/cbp-test-automation/blob/main/.cloudbees/pods/unify-ci/action.yaml#L100-L115)
+is the candidate fix, to be evaluated against this pipeline. Note that without a
+unique `JOB_NAME` every run writes `report-.zip` and overwrites the previous blob
+too — so merging alone is not sufficient, which is likely why the first attempt
+on the ticket still showed an empty tab. `playwright.cbp-45873.config.ts` already
+attaches the blob reporter whenever `JOB_NAME` is set, so the fix can be tried
+without touching the specs.
+
+### Separately: a real parser bug in the action
+
+`util/playwright.go` drops tests when a spec file has **both** a top-level test
+and a `describe` block:
+
+```go
+if len(suite.SuitesPW) > 0 {
+    for _, suitePW := range suite.SuitesPW { ... }  // nested specs only
+} else if len(suite.Specs) > 0 { ... }              // never reached
+```
+
+`e2e/character-page.spec.ts` has that shape, so the main suite publishes 9 of its
+10 passing tests. Unrelated to CBP-45873's overwrite, but it also loses tests
+silently.
 
 ### Test outcomes
 
