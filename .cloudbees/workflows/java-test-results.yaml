@@ -1,0 +1,42 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: Java tests - publish JUnit results
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+jobs:
+  java-tests:
+    steps:
+      - name: Checkout
+        uses: cloudbees-io/checkout@v1
+
+      - name: Run Maven tests
+        uses: docker://maven:3.9-eclipse-temurin-17
+        run: |
+          mvn -B -Dmaven.repo.local=${{ cloudbees.workspace }}/.m2 clean test
+          ls -l ${{ cloudbees.workspace }}/target/surefire-reports/
+
+      - name: Publish test results
+        uses: cloudbees-io/publish-test-results@v2
+        if: ${{ always() }}
+        with:
+          test-type: junit
+          results-path: ${{ cloudbees.workspace }}/target/surefire-reports
+
+      - name: Register build artifact
+        id: build
+        uses: cloudbees-io/register-build-artifact@v2
+        with:
+          name: marvel-mock-service
+          version: 0.0.1-${{ cloudbees.run_id }}
+          url: docker.io/pankajydev/gha-test-image:0.0.1
+
+      - name: Deploy
+        kind: deploy
+        uses: cloudbees-io/register-deployed-artifact@v2
+        with:
+          artifact-id: ${{ steps.build.outputs.artifact-id }}
+          target-environment: PANPREPRODTEST
