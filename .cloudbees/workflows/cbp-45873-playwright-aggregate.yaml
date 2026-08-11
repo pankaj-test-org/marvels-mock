@@ -20,6 +20,12 @@ jobs:
       # nothing is overwritten. Playwright reads that variable ahead of the
       # `outputFile` set in the config, so the shared config needs no change.
       #
+      # The reports must NOT go in test-results/. That is Playwright's own
+      # default outputDir, and it is emptied at the start of every run, so each
+      # invocation would delete the previous report instead of adding to it.
+      # Playwright also drops its .last-run.json there. Use a directory
+      # Playwright does not manage.
+      #
       # BLANK_LAST_RUN stays true, which is the case that currently publishes
       # nothing: the teardown run collects zero tests and still writes a report.
       # Aggregating means it simply contributes zero instead of blanking the
@@ -35,44 +41,55 @@ jobs:
         run: |
           npm ci
           CFG=playwright.cbp-45873.config.ts
+          REPORTS=published-reports
           echo "BLANK_LAST_RUN=$BLANK_LAST_RUN"
 
-          mkdir -p test-results
+          mkdir -p $REPORTS
 
           show() {
-            node -e "const s=require('./test-results/$1.json').stats;console.log('    test-results/$1.json -> expected='+s.expected+' skipped='+s.skipped)"
+            node -e "
+              const r = require('./$REPORTS/$1.json');
+              const s = r.stats || {};
+              console.log('    $REPORTS/$1.json -> expected=' + s.expected + ' skipped=' + s.skipped);
+            "
           }
 
           echo "=== run 1/4: @Login ==="
-          PLAYWRIGHT_JSON_OUTPUT_FILE=test-results/login.json \
+          PLAYWRIGHT_JSON_OUTPUT_FILE=$REPORTS/login.json \
             npx playwright test -c $CFG --grep '@Login'; show login
           echo "=== run 2/4: @cleanup ==="
-          PLAYWRIGHT_JSON_OUTPUT_FILE=test-results/cleanup.json \
+          PLAYWRIGHT_JSON_OUTPUT_FILE=$REPORTS/cleanup.json \
             npx playwright test -c $CFG --grep '@cleanup'; show cleanup
           echo "=== run 3/4: @regression ==="
-          PLAYWRIGHT_JSON_OUTPUT_FILE=test-results/regression.json \
+          PLAYWRIGHT_JSON_OUTPUT_FILE=$REPORTS/regression.json \
             npx playwright test -c $CFG --grep '@regression'; show regression
 
           echo "=== run 4/4: @teardown ==="
           if [ "$BLANK_LAST_RUN" = "true" ]; then
             echo "RUN_TEARDOWN unset -> collects nothing, writes its own empty report"
-            PLAYWRIGHT_JSON_OUTPUT_FILE=test-results/teardown.json \
+            PLAYWRIGHT_JSON_OUTPUT_FILE=$REPORTS/teardown.json \
               npx playwright test -c $CFG --grep '@teardown' --pass-with-no-tests
           else
             echo "RUN_TEARDOWN=true -> contributes 2 real tests"
-            RUN_TEARDOWN=true PLAYWRIGHT_JSON_OUTPUT_FILE=test-results/teardown.json \
+            RUN_TEARDOWN=true PLAYWRIGHT_JSON_OUTPUT_FILE=$REPORTS/teardown.json \
               npx playwright test -c $CFG --grep '@teardown'
           fi
           show teardown
 
           echo "--- every run kept its own report, so all of them get published ---"
-          ls -lh test-results/
+          ls -lha $REPORTS/
           node -e "
             const fs = require('fs');
-            const total = fs.readdirSync('test-results')
-              .filter((f) => f.endsWith('.json'))
-              .reduce((sum, f) => sum + require('./test-results/' + f).stats.expected, 0);
-            console.log('    expected across all reports = ' + total);
+            const dir = '$REPORTS';
+            // Skip dotfiles: Playwright writes .last-run.json, which has no stats.
+            // The publish step skips them too, since *.json does not match a leading dot.
+            const files = fs.readdirSync(dir).filter((f) => !f.startsWith('.') && f.endsWith('.json'));
+            let total = 0;
+            for (const f of files) {
+              const s = require('./' + dir + '/' + f).stats || {};
+              total += s.expected || 0;
+            }
+            console.log('    ' + files.length + ' reports, expected across all of them = ' + total);
           "
 
       # A glob rather than a bare directory: a directory that does not exist
@@ -84,4 +101,4 @@ jobs:
         if: ${{ always() }}
         with:
           test-type: PLAYWRIGHT
-          results-path: ${{ cloudbees.workspace }}/test-results/*.json
+          results-path: ${{ cloudbees.workspace }}/published-reports/*.json
