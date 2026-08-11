@@ -41,13 +41,13 @@ jobs:
           test-type: JUNIT
           results-path: ${{ cloudbees.workspace }}/target/surefire-reports
 
-#      - name: Register build artifact
-#        id: build
-#        uses: cloudbees-io/register-build-artifact@v2
-#        with:
-#          name: marvel-mock-service
-#          version: 0.0.1-${{ cloudbees.run_id }}
-#          url: docker.io/pankajydev/gha-test-image:0.0.1
+      - name: Register build artifact
+        id: build
+        uses: cloudbees-io/register-build-artifact@v2
+        with:
+          name: marvel-mock-service
+          version: 0.0.1-${{ cloudbees.run_id }}
+          url: docker.io/pankajydev/gha-test-image:0.0.1
 
 #      - name: Deploy
 #        kind: deploy
