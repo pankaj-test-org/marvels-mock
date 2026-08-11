@@ -20,6 +20,12 @@ jobs:
       # nothing is overwritten. Playwright reads that variable ahead of the
       # `outputFile` set in the config, so the shared config needs no change.
       #
+      # The paths are absolute. Playwright resolves this variable against the
+      # process working directory, whereas the config's `outputFile` resolves
+      # against the config directory - so a relative value here can land
+      # somewhere the publish step is not looking, while mkdir and ls in this
+      # step still appear correct.
+      #
       # The reports must NOT go in test-results/. That is Playwright's own
       # default outputDir, and it is emptied at the start of every run, so each
       # invocation would delete the previous report instead of adding to it.
@@ -41,14 +47,17 @@ jobs:
         run: |
           npm ci
           CFG=playwright.cbp-45873.config.ts
-          REPORTS=published-reports
+          REPORTS=${{ cloudbees.workspace }}/published-reports
           echo "BLANK_LAST_RUN=$BLANK_LAST_RUN"
 
           mkdir -p $REPORTS
 
+          echo "reports dir: $REPORTS"
+          echo "working dir : $(pwd)"
+
           show() {
             node -e "
-              const r = require('./$REPORTS/$1.json');
+              const r = require('$REPORTS/$1.json');
               const s = r.stats || {};
               console.log('    $REPORTS/$1.json -> expected=' + s.expected + ' skipped=' + s.skipped);
             "
@@ -86,7 +95,7 @@ jobs:
             const files = fs.readdirSync(dir).filter((f) => !f.startsWith('.') && f.endsWith('.json'));
             let total = 0;
             for (const f of files) {
-              const s = require('./' + dir + '/' + f).stats || {};
+              const s = require(dir + '/' + f).stats || {};
               total += s.expected || 0;
             }
             console.log('    ' + files.length + ' reports, expected across all of them = ' + total);
