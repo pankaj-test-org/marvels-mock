@@ -30,13 +30,13 @@ jobs:
           test-type: PLAYWRIGHT
           results-path: ${{ cloudbees.workspace }}/results.json
 
-#      - name: Register build artifact
-#        id: build
-#        uses: cloudbees-io/register-build-artifact@v2
-#        with:
-#          name: marvel-mock-e2e
-#          version: 1.0.0-${{ cloudbees.run_id }}
-#          url: docker.io/pankajydev/gha-test-image:1.0.0
+      - name: Register build artifact
+        id: build
+        uses: cloudbees-io/register-build-artifact@v2
+        with:
+          name: marvel-mock-e2e
+          version: 1.0.0-${{ cloudbees.run_id }}
+          url: docker.io/pankajydev/gha-test-image:1.0.0
 
 #      - name: Deploy
 #        kind: deploy

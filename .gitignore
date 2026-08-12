@@ -55,6 +55,7 @@ node_modules/
 results.json
 blob-report/
 html-test-results/
+published-reports/
 playwright-report/
 test-results/
 

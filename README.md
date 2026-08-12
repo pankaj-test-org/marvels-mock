@@ -58,8 +58,8 @@ one-time cached pull.
 ### CBP-45873 repro — `results.json` overwritten by successive runs
 
 `cbp-45873-playwright-overwrite.yaml` reproduces [CBP-45873](https://cloudbees.atlassian.net/browse/CBP-45873)
-(*Intermittent failures in publishing test results*). It is `workflow_dispatch`-only
-and has its own suite (`e2e-cbp-45873/`) and config
+(*Intermittent failures in publishing test results*). It runs on every push and
+has its own suite (`e2e-cbp-45873/`) and config
 (`playwright.cbp-45873.config.ts`), so the main Playwright pipeline is unaffected.
 
 The bug is not in `publish-test-results`. The `cbp-test-automation` pods invoke
@@ -69,17 +69,18 @@ Only the last invocation survives to the publish step, and every run exits 0, so
 the pipeline stays green while results go missing. This is why 8 of 9 pods
 published nothing while `unify-ci` worked: it alone merged blob reports.
 
-The workflow runs four tagged invocations (9 tests total) and the
-`blank-last-run` input controls what the final one does:
+The workflow runs four tagged invocations (9 tests total). The `BLANK_LAST_RUN`
+env var on the test step controls what the final one does — edit it in the YAML
+to turn the bug on or off:
 
-| `blank-last-run` | Final `results.json` | Test results tab |
+| `BLANK_LAST_RUN` | Final `results.json` | Test results tab |
 |---|---|---|
-| `true` (default) | `expected=0, suites=0` | **empty** — "No results found" |
-| `false` | `expected=2, suites=1` | 2 teardown tests |
+| `"true"` (committed default) | `expected=0, suites=0` | **empty** — "No results found" |
+| `"false"` | `expected=2, suites=1` | 2 teardown tests |
 
 Either way only the last invocation is published — the intermediate counts go
 `2 → 2 → 3` for 7 tests run, so results are already being lost before the final
-run. `blank-last-run=true` takes it to zero, reproducing the empty tab from the
+run. `BLANK_LAST_RUN=true` takes it to zero, reproducing the empty tab from the
 ticket exactly: green run, nothing published.
 
 The blanking works because `e2e-cbp-45873/zz-teardown.spec.ts` only registers its
