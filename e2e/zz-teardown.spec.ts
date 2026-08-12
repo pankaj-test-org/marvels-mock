@@ -1,12 +1,15 @@
 import { test, expect } from '@playwright/test';
 
-// The final invocation in the pod sequence, and the one that empties the tab.
+// The final invocation in the sequence, and the interesting one.
 //
 // When RUN_TEARDOWN is unset the describe block is never registered, so this
 // file contributes no tests at all. The run collects nothing, exits 0 (with
-// --pass-with-no-tests), and the JSON reporter still writes results.json -
-// blanking everything the earlier runs recorded. That is the empty-tab case of
-// CBP-45873: green pipeline, {"suites": [], "expected": 0}.
+// --pass-with-no-tests), and the JSON reporter still writes a report holding
+// {"suites": [], "expected": 0}.
+//
+// If every run shares one report path, that empty report replaces everything the
+// earlier runs recorded, and a green pipeline publishes no results at all. Give
+// each run its own report file and the empty one simply contributes nothing.
 //
 // Set RUN_TEARDOWN=true and the same invocation contributes 2 real tests, so
 // the last run is no longer blank.

@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
 
-// Tagged to mirror the cbp-test-automation pods, which invoke `playwright test`
-// once per tag (@Login, then @cleanup, then the main suite) inside a single step.
-// Each invocation rewrites results.json, so only the last tag's tests survive
-// unless the runs are merged from blob reports. See CBP-45873.
+// Tagged so the workflow can invoke `playwright test` once per tag (@Login, then
+// @cleanup, then the main suite) inside a single step, which is a common shape
+// for suites that need setup and teardown around them.
+//
+// Each invocation rewrites results.json, so only the last tag's tests are
+// published unless every run is given its own report file.
 
 test('signs in with a seeded account', { tag: '@Login' }, async ({ page }) => {
   await page.setContent('<div id="user">pankaj@example.com</div>');
