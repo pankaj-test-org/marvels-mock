@@ -33,18 +33,16 @@ jobs:
       # Playwright also drops its .last-run.json there. Use a directory
       # Playwright does not manage.
       #
-      # BLANK_LAST_RUN makes the teardown run collect nothing, so it writes an
-      # empty report. With one report per run that contributes zero and the other
-      # three are still published; sharing one report path would blank them all.
+      # The fourth run greps a tag no test carries, so it collects nothing and
+      # still writes a report - an empty one. With one report per run that
+      # contributes zero and the other three are published as normal; sharing a
+      # single report path would let it blank them all.
       - name: Run tagged Playwright suites
         kind: test
         uses: docker://mcr.microsoft.com/playwright:v1.60.0-noble
-        env:
-          BLANK_LAST_RUN: "true"
         run: |
           npm ci
           REPORTS=${{ cloudbees.workspace }}/published-reports
-          echo "BLANK_LAST_RUN=$BLANK_LAST_RUN"
 
           mkdir -p $REPORTS
 
@@ -69,17 +67,10 @@ jobs:
           PLAYWRIGHT_JSON_OUTPUT_FILE=$REPORTS/regression.json \
             npx playwright test --grep '@regression'; show regression
 
-          echo "=== run 4/4: @teardown ==="
-          if [ "$BLANK_LAST_RUN" = "true" ]; then
-            echo "RUN_TEARDOWN unset -> collects nothing, writes its own empty report"
-            PLAYWRIGHT_JSON_OUTPUT_FILE=$REPORTS/teardown.json \
-              npx playwright test --grep '@teardown' --pass-with-no-tests
-          else
-            echo "RUN_TEARDOWN=true -> contributes 2 real tests"
-            RUN_TEARDOWN=true PLAYWRIGHT_JSON_OUTPUT_FILE=$REPORTS/teardown.json \
-              npx playwright test --grep '@teardown'
-          fi
-          show teardown
+          echo "=== run 4/4: a tag that matches nothing ==="
+          PLAYWRIGHT_JSON_OUTPUT_FILE=$REPORTS/no-matching-tests.json \
+            npx playwright test --grep '@noMatchingTests' --pass-with-no-tests
+          show no-matching-tests
 
           echo "--- every run kept its own report, so all of them get published ---"
           ls -lha $REPORTS/

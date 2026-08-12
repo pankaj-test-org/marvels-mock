@@ -5,7 +5,8 @@ import { test, expect } from '@playwright/test';
 // for suites that need setup and teardown around them.
 //
 // Each invocation rewrites results.json, so only the last tag's tests are
-// published unless every run is given its own report file.
+// published unless every run is given its own report file. The workflow also
+// runs a tag that matches nothing, which still writes a report - an empty one.
 
 test('signs in with a seeded account', { tag: '@Login' }, async ({ page }) => {
   await page.setContent('<div id="user">pankaj@example.com</div>');
