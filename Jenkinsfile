@@ -44,6 +44,11 @@ pipeline {
                     echo "ENABLE_DEPLOYMENT: ${env.ENABLE_DEPLOYMENT ?: 'not set (will skip deployment)'}"
                     echo "  └─ Likely values: true | <not set>"
                     echo "  └─ Purpose: Enable deployment stage"
+                    echo ''
+                    echo "ENABLE_CBP_INTEGRATION: ${env.ENABLE_CBP_INTEGRATION ?: 'not set (will skip CBP stages)'}"
+                    echo "  └─ Likely values: true | <not set>"
+                    echo "  └─ Purpose: Enable stages that call the CloudBees platform"
+                    echo "  └─ Gates: Registering build artifact, Deploy, Security Scan"
                 }
             }
         }
@@ -106,6 +111,9 @@ pipeline {
         }
 
         stage('Registering build artifact') {
+            when {
+                expression { env.ENABLE_CBP_INTEGRATION == 'true' }
+            }
             steps {
                 script {
                     echo 'Registering the metadata'
@@ -135,7 +143,10 @@ pipeline {
 
         stage('Deploy') {
             when {
-                expression { env.ENABLE_DEPLOYMENT == 'true' }
+                allOf {
+                    expression { env.ENABLE_CBP_INTEGRATION == 'true' }
+                    expression { env.ENABLE_DEPLOYMENT == 'true' }
+                }
             }
             steps {
                 echo "Artifact ID : ${env.ARTIFACT_ID}"
@@ -184,6 +195,9 @@ pipeline {
         }
 
         stage('Security Scan') {
+            when {
+                expression { env.ENABLE_CBP_INTEGRATION == 'true' }
+            }
             steps {
                 sh "echo 'Security scan with multiple results'"
                 sh "pwd"
