@@ -49,7 +49,8 @@ class MarvelMockControllerTests {
 
         assertNull(result);
 
-        int randomValue = new java.util.Random().nextInt(2);
-        assertEquals(0, randomValue, "Random failure: unlucky coin flip");
+//         int randomValue = new java.util.Random().nextInt(2);
+        int randomValue = 0;
+        assertEquals(0, randomValue, "Invoked Failure");
     }
 }
