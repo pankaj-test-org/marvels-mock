@@ -66,8 +66,17 @@ pipeline {
                     echo "Building Docker image with tag: ${env.IMAGE_TAG}"
                     sh "docker build -t pankajydev/jenkins-test-image:${env.IMAGE_TAG} ."
 
-                    // Get the image digest (SHA256 hash)
-                    def imageDigest = sh(script: "docker inspect --format='{{index .RepoDigests 0}}' pankajydev/jenkins-test-image:${env.IMAGE_TAG} || docker inspect --format='{{.Id}}' pankajydev/jenkins-test-image:${env.IMAGE_TAG} | cut -d: -f2", returnStdout: true).trim()
+                    // RepoDigests is only populated once the image has been pushed or pulled,
+                    // so fall back to the local image ID for a freshly built image.
+                    echo "Resolving image digest..."
+                    def imageDigest = sh(script: "docker inspect --format='{{if .RepoDigests}}{{index .RepoDigests 0}}{{end}}' pankajydev/jenkins-test-image:${env.IMAGE_TAG} | cut -d@ -f2", returnStdout: true).trim()
+                    if (imageDigest) {
+                        echo "  └─ Source: RepoDigests (image exists in registry)"
+                    } else {
+                        echo "  └─ RepoDigests is empty (image not pushed yet), falling back to local image ID"
+                        imageDigest = sh(script: "docker inspect --format='{{.Id}}' pankajydev/jenkins-test-image:${env.IMAGE_TAG}", returnStdout: true).trim()
+                        echo "  └─ Source: local image ID (not a registry digest)"
+                    }
                     env.IMAGE_DIGEST = imageDigest
                     echo "Docker image built successfully"
                     echo "Image digest: ${env.IMAGE_DIGEST}"
@@ -154,13 +163,14 @@ pipeline {
                 sh 'mvn -B test'
                 echo 'Test stage completed.'
             }
-        }
-
-        stage('Archive Test Results') {
-            steps {
-                echo 'Archiving test results...'
-                junit '**/target/surefire-reports/*.xml'
-                echo 'Test results archived.'
+            post {
+                // Publish from post so reports are collected even when tests fail
+                always {
+                    echo "Archiving test results (test stage result: ${currentBuild.currentResult})"
+                    sh 'ls -l target/surefire-reports/ 2>/dev/null || echo "  └─ no surefire-reports directory"'
+                    junit '**/target/surefire-reports/*.xml'
+                    echo 'Test results archived.'
+                }
             }
         }
 
